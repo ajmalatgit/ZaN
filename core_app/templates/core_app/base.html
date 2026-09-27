@@ -1,0 +1,72 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}ZAN | Premium E-Commerce{% endblock %}</title>
+    
+    <!-- External Base CSS -->
+    <link rel="stylesheet" href="{% static 'core_app/css/base.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+
+    <header>
+        <a href="{% url 'home' %}" class="brand-logo">ZAN</a>
+<nav>
+    <a href="{% url 'home' %}">Shop</a>
+    {% if user.is_authenticated %}
+        {% if user.role == 'SELLER' or user.role == 'ADMIN' %}
+            <a href="{% url 'seller_dashboard' %}" style="color: var(--accent-gold);">Seller Portal</a>
+        {% endif %}
+        {% if user.role == 'ADMIN' %}
+            <a href="{% url 'admin_dashboard' %}" style="color: #f87171;">Admin Panel</a>
+        {% endif %}
+        <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
+    {% else %}
+        <a href="{% url 'login' %}">Login</a>
+        <a href="{% url 'register' %}">Register</a>
+    {% endif %}
+    <a href="#">Cart <span class="cart-badge">0</span></a>
+</nav>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <footer>
+        <div class="footer-grid">
+            <div class="footer-col">
+                <a href="#" class="brand-logo" style="font-size: 1.4rem;">ZAN</a>
+                <p style="margin-top: 0.8rem;">Refined quality and timeless style engineered for modern standards.</p>
+            </div>
+            <div class="footer-col">
+                <h4>Quick Links</h4>
+                <ul>
+                    <li><a href="#">New Arrivals</a></li>
+                    <li><a href="#">Best Sellers</a></li>
+                    <li><a href="#">Special Offers</a></li>
+                </ul>
+            </div>
+            <div class="footer-col">
+                <h4>Customer Care</h4>
+                <ul>
+                    <li><a href="#">Shipping & Returns</a></li>
+                    <li><a href="#">Order Tracking</a></li>
+                    <li><a href="#">Contact Us</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="copyright">
+            &copy; {% now "Y" %} ZAN Store. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- External Main JS -->
+    <script src="{% static 'core_app/js/main.js' %}"></script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,24 @@
+{% extends 'core_app/base.html' %}
+{% block title %}ZAN | Executive Control Panel{% endblock %}
+
+{% block content %}
+<div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 2rem;">
+    <h1 style="color: var(--accent-gold);">Executive Admin Control Panel</h1>
+    <p style="color: var(--text-muted);">Global system metrics and administrative management.</p>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px;">
+        <span style="color: var(--text-muted); font-size: 0.85rem;">Total Platform Users</span>
+        <h2 style="color: var(--accent-gold); font-size: 2rem; margin-top: 0.5rem;">{{ stats.total_users }}</h2>
+    </div>
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px;">
+        <span style="color: var(--text-muted); font-size: 0.85rem;">Verified Sellers</span>
+        <h2 style="color: var(--accent-gold); font-size: 2rem; margin-top: 0.5rem;">{{ stats.total_sellers }}</h2>
+    </div>
+    <div style="background: var(--surface-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px;">
+        <span style="color: var(--text-muted); font-size: 0.85rem;">Total Catalog Items</span>
+        <h2 style="color: var(--accent-gold); font-size: 2rem; margin-top: 0.5rem;">{{ stats.total_products }}</h2>
+    </div>
+</div>
+{% endblock %}

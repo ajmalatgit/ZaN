@@ -1,0 +1,25 @@
+{% extends 'core_app/base.html' %}
+{% block title %}ZAN | Add New Product{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 2rem auto; background: var(--surface-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 8px;">
+    <h2 style="color: var(--accent-gold); margin-bottom: 1.5rem;">List New Product</h2>
+    
+    <form method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        
+        {{ form.as_p }}
+
+        <!-- Multiple Gallery Images Input -->
+        <p>
+            <label for="id_gallery">Additional Gallery Images:</label>
+            <input type="file" name="gallery_images" id="id_gallery" class="form-input" multiple>
+        </p>
+        
+        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+            <button type="submit" class="btn-gold" style="flex: 1;">Publish Product</button>
+            <a href="{% url 'seller_dashboard' %}" style="padding: 0.75rem 1rem; border: 1px solid var(--border-color); color: var(--text-muted); text-decoration: none; border-radius: 5px;">Cancel</a>
+        </div>
+    </form>
+</div>
+{% endblock %}

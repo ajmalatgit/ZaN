@@ -1,0 +1,47 @@
+{% extends 'core_app/base.html' %}
+{% load static %}
+
+{% block title %}ZAN | Account Login{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-container {
+        max-width: 420px;
+        margin: 3rem auto;
+        background: var(--surface-card);
+        border: 1px solid var(--border-color);
+        border-radius: 10px;
+        padding: 2.5rem 2rem;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+    }
+    .auth-title { text-align: center; color: var(--accent-gold); margin-bottom: 1.5rem; }
+    .form-group { margin-bottom: 1.2rem; }
+    .form-group label { display: block; margin-bottom: 0.4rem; color: var(--text-muted); font-size: 0.9rem; }
+    .form-group input, .form-group select {
+        width: 100%; padding: 0.75rem; background: var(--bg-dark);
+        border: 1px solid var(--border-color); color: var(--text-light); border-radius: 5px;
+    }
+    .form-group input:focus { border-color: var(--accent-gold); outline: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <h2 class="auth-title">Client Login</h2>
+    <form method="POST">
+        {% csrf_token %}
+        <div class="form-group">
+            <label>Username</label>
+            <input type="text" name="username" required>
+        </div>
+        <div class="form-group">
+            <label>Password</label>
+            <input type="password" name="password" required>
+        </div>
+        <button type="submit" class="btn-gold" style="width: 100%; margin-top: 1rem;">Sign In</button>
+    </form>
+    <p style="text-align: center; margin-top: 1.5rem; font-size: 0.85rem; color: var(--text-muted);">
+        Don't have an account? <a href="{% url 'register' %}" style="color: var(--accent-gold);">Register here</a>.
+    </p>
+</div>
+{% endblock %}
