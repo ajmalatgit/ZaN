@@ -5,20 +5,6 @@
 
 {% block extra_css %}
     <link rel="stylesheet" href="{% static 'core_app/css/home.css' %}">
-    <style>
-        .product-card-link {
-            text-decoration: none;
-            color: inherit;
-            display: block;
-        }
-        .product-card {
-            transition: border-color 0.3s ease, transform 0.2s ease;
-        }
-        .product-card:hover {
-            border-color: var(--accent-gold, #d4af37);
-            transform: translateY(-2px);
-        }
-    </style>
 {% endblock %}
 
 {% block content %}
@@ -32,40 +18,43 @@
     <section id="featured">
         <div class="section-title">
             <h2>Featured Items</h2>
-            <a href="#" style="color: var(--text-muted); text-decoration: none; font-size: 0.9rem;">View All &rarr;</a>
+            <a href="{% url 'catalog' %}" class="home-view-all">View All &rarr;</a>
         </div>
 
         <div class="product-grid">
             {% for product in products %}
             <div class="product-card">
-                <!-- Clickable Product Card Link -->
                 <a href="{% url 'product_detail' slug=product.slug %}" class="product-card-link">
                     <div class="product-image">
                         {% if product.primary_image %}
-                            <img src="{{ product.primary_image.url }}" alt="{{ product.title }}" style="width: 100%; height: 100%; object-fit: cover;">
+                            <img src="{{ product.primary_image.url }}" alt="{{ product.name|default:product.title }}">
                         {% else %}
-                            <span>[ No Image ]</span>
+                            <span class="home-no-image">[ No Image ]</span>
                         {% endif %}
                     </div>
-                    
+
                     <div class="product-info">
                         <span class="product-category">{{ product.category.name }}</span>
-                        <h3 class="product-title">{{ product.title }}</h3>
+                        <h3 class="product-title">{{ product.name|default:product.title }}</h3>
+
                         <div class="product-bottom">
-                            <!-- Updated Currency Symbol -->
                             <span class="product-price">₹{{ product.price }}</span>
-                            <!-- Direct Add-to-Cart Action -->
-                            <form action="#" method="POST" style="margin: 0;" onclick="event.stopPropagation();">
-                                {% csrf_token %}
-                                <input type="hidden" name="product_id" value="{{ product.id }}">
-                                <button type="submit" class="btn-cart">Add to Cart</button>
-                            </form>
                         </div>
                     </div>
                 </a>
+
+                <div class="home-product-action">
+                    {% if product.stock %}
+                    <button type="button" class="btn-cart zan-btn-add" data-product-id="{{ product.id }}">
+                        Add to Cart
+                    </button>
+                    {% else %}
+                    <button type="button" class="btn-cart" disabled>Out of Stock</button>
+                    {% endif %}
+                </div>
             </div>
             {% empty %}
-            <p style="color: var(--text-muted); grid-column: 1 / -1;">No products found in the database. Add some via the Admin portal or Seller Dashboard.</p>
+            <p class="home-empty-state">No products are available yet. Please check back soon.</p>
             {% endfor %}
         </div>
     </section>

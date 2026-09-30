@@ -1,0 +1,24 @@
+{% extends 'core_app/base.html' %}
+{% load static %}
+{% block title %}ZAN | Your Shopping Cart{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/cart_detail.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="cart-page">
+  <h1>Your Shopping Cart</h1>
+  <div class="cart-page-items" id="cartPageItems">
+    {% include 'core_app/cart_items.html' %}
+  </div>
+  <div class="cart-page-summary">
+    <strong>Subtotal</strong>
+    <strong>₹<span id="cartPageSubtotal">{{ cart.get_total_price|floatformat:2 }}</span></strong>
+  </div>
+  {% if cart %}
+  <a href="{% url 'checkout' %}" class="zan-btn-checkout cart-page-checkout">Proceed to checkout</a>
+  {% endif %}
+  <a href="{% url 'home' %}" class="zan-btn-outline">Continue shopping</a>
+</section>
+{% endblock %}

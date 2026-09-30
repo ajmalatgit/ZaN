@@ -11,7 +11,9 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+import dj_database_url
 from decouple import config
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,8 +24,22 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = config('SECRET_KEY')
+if len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-'):
+    raise ImproperlyConfigured('Set a unique, randomly generated SECRET_KEY in .env.')
+
 DEBUG = config('DEBUG', default=False, cast=bool)
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=lambda v: [s.strip() for s in v.split(',')])
+ALLOWED_HOSTS = config(
+    'ALLOWED_HOSTS',
+    default='localhost,127.0.0.1' if DEBUG else '',
+    cast=lambda value: [host.strip() for host in value.split(',') if host.strip()],
+)
+if not DEBUG and not ALLOWED_HOSTS:
+    raise ImproperlyConfigured('Set ALLOWED_HOSTS to the production hostnames.')
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS',
+    default='',
+    cast=lambda value: [origin.strip() for origin in value.split(',') if origin.strip()],
+)
 
 
 # Application definition
@@ -53,13 +69,17 @@ ROOT_URLCONF = 'core.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [
+            BASE_DIR / 'templates',  # Directory for global templates
+        ],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'core_app.context_processors.cart_context',  # Custom Cart Context Processor
             ],
         },
     },
@@ -71,12 +91,26 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+database_url = config('DATABASE_URL', default='')
+if database_url:
+    DATABASES = {
+        'default': dj_database_url.parse(
+            database_url,
+            conn_max_age=600,
+            ssl_require=not DEBUG,
+        )
     }
-}
+else:
+    if not DEBUG:
+        raise ImproperlyConfigured(
+            'Set DATABASE_URL for production; SQLite is only configured for development.'
+        )
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'db.sqlite3',
+        }
+    }
 
 
 # Password validation
@@ -130,3 +164,49 @@ MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 AUTH_USER_MODEL = 'core_app.User'
+
+# settings.py
+RAZORPAY_KEY_ID = config('RAZORPAY_KEY_ID', default='')
+RAZORPAY_KEY_SECRET = config('RAZORPAY_KEY_SECRET', default='')
+
+RAZORPAY_WEBHOOK_SECRET = config('RAZORPAY_WEBHOOK_SECRET', default='')
+
+INVOICE_BUSINESS_NAME = config('INVOICE_BUSINESS_NAME', default='ZAN Store')
+INVOICE_BUSINESS_ADDRESS = config('INVOICE_BUSINESS_ADDRESS', default='')
+INVOICE_BUSINESS_GSTIN = config('INVOICE_BUSINESS_GSTIN', default='')
+
+CSRF_COOKIE_SECURE = not DEBUG or config(
+    'CSRF_COOKIE_SECURE',
+    default=False,
+    cast=bool,
+)
+SESSION_COOKIE_SECURE = not DEBUG or config(
+    'SESSION_COOKIE_SECURE',
+    default=False,
+    cast=bool,
+)
+SECURE_SSL_REDIRECT = not DEBUG or config(
+    'SECURE_SSL_REDIRECT',
+    default=False,
+    cast=bool,
+)
+SECURE_PROXY_SSL_HEADER = (
+    ('HTTP_X_FORWARDED_PROTO', 'https')
+    if config('TRUST_PROXY_SSL_HEADER', default=False, cast=bool)
+    else None
+)
+SECURE_HSTS_SECONDS = config(
+    'SECURE_HSTS_SECONDS',
+    default=0,
+    cast=int,
+)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config(
+    'SECURE_HSTS_INCLUDE_SUBDOMAINS',
+    default=False,
+    cast=bool,
+)
+SECURE_HSTS_PRELOAD = config(
+    'SECURE_HSTS_PRELOAD',
+    default=False,
+    cast=bool,
+)

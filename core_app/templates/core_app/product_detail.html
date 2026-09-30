@@ -4,225 +4,7 @@
 {% block title %}ZAN | {{ product.title }}{% endblock %}
 
 {% block extra_css %}
-<style>
-  .pdp-container {
-    max-width: 1200px;
-    margin: 2rem auto;
-    padding: 0 1.5rem;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 3rem;
-  }
-
-  @media (max-width: 868px) {
-    .pdp-container {
-      grid-template-columns: 1fr;
-      gap: 2rem;
-    }
-  }
-
-  /* --- GALLERY STYLES --- */
-  .pdp-gallery {
-    display: flex;
-    flex-direction: column;
-    gap: 1rem;
-  }
-
-  .main-image-wrapper {
-    width: 100%;
-    aspect-ratio: 1 / 1;
-    background: var(--surface-card, #121212);
-    border: 1px solid var(--border-color, #2a2a2a);
-    border-radius: 8px;
-    overflow: hidden;
-    position: relative;
-  }
-
-  .main-image-wrapper img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-    transition: transform 0.3s ease;
-  }
-
-  .thumbnail-strip {
-    display: flex;
-    gap: 0.75rem;
-    overflow-x: auto;
-    padding-bottom: 0.5rem;
-  }
-
-  .thumb-item {
-    width: 70px;
-    height: 70px;
-    border-radius: 6px;
-    border: 1px solid var(--border-color, #2a2a2a);
-    background: var(--surface-card, #121212);
-    cursor: pointer;
-    overflow: hidden;
-    opacity: 0.6;
-    transition: all 0.2s ease;
-    flex-shrink: 0;
-  }
-
-  .thumb-item.active,
-  .thumb-item:hover {
-    opacity: 1;
-    border-color: var(--accent-gold, #d4af37);
-  }
-
-  .thumb-item img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  /* --- PRODUCT INFO STYLES --- */
-  .pdp-info {
-    display: flex;
-    flex-direction: column;
-  }
-
-  .pdp-category-badge {
-    text-transform: uppercase;
-    font-size: 0.75rem;
-    letter-spacing: 2px;
-    color: var(--accent-gold, #d4af37);
-    margin-bottom: 0.5rem;
-    font-weight: 600;
-  }
-
-  .pdp-title {
-    font-size: 2rem;
-    font-weight: 700;
-    color: var(--text-light, #ffffff);
-    margin: 0 0 1rem 0;
-    line-height: 1.2;
-  }
-
-  .pdp-price {
-    font-size: 1.75rem;
-    font-weight: 600;
-    color: var(--accent-gold, #d4af37);
-    margin-bottom: 1.5rem;
-  }
-
-  .pdp-divider {
-    height: 1px;
-    background: var(--border-color, #2a2a2a);
-    border: none;
-    margin: 1.5rem 0;
-  }
-
-  .pdp-description {
-    color: var(--text-muted, #a0a0a0);
-    line-height: 1.6;
-    font-size: 0.95rem;
-    margin-bottom: 2rem;
-  }
-
-  /* QUANTITY & BUY CONTROLS */
-  .pdp-actions {
-    display: flex;
-    gap: 1rem;
-    align-items: center;
-    margin-bottom: 2rem;
-  }
-
-  .qty-selector {
-    display: flex;
-    align-items: center;
-    border: 1px solid var(--border-color, #2a2a2a);
-    background: var(--surface-card, #121212);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-
-  .qty-btn {
-    background: none;
-    border: none;
-    color: var(--text-light, #fff);
-    width: 40px;
-    height: 44px;
-    font-size: 1.2rem;
-    cursor: pointer;
-    transition: background 0.2s;
-  }
-
-  .qty-btn:hover {
-    background: rgba(212, 175, 55, 0.1);
-    color: var(--accent-gold, #d4af37);
-  }
-
-  .qty-input {
-    width: 45px;
-    height: 44px;
-    border: none;
-    background: none;
-    text-align: center;
-    color: var(--text-light, #fff);
-    font-weight: 600;
-    font-size: 1rem;
-  }
-
-  .btn-add-cart {
-    flex: 1;
-    height: 44px;
-    background: linear-gradient(135deg, #d4af37 0%, #aa7c11 100%);
-    color: #000;
-    font-weight: 700;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    text-transform: uppercase;
-    letter-spacing: 1px;
-    transition: opacity 0.2s ease, transform 0.1s ease;
-  }
-
-  .btn-add-cart:hover {
-    opacity: 0.9;
-  }
-
-  .btn-add-cart:active {
-    transform: scale(0.98);
-  }
-
-  /* RELATED PRODUCTS SECTION */
-  .related-section {
-    max-width: 1200px;
-    margin: 4rem auto 2rem;
-    padding: 0 1.5rem;
-  }
-
-  .related-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.5rem;
-    margin-top: 1.5rem;
-  }
-
-  .related-card {
-    background: var(--surface-card, #121212);
-    border: 1px solid var(--border-color, #2a2a2a);
-    border-radius: 8px;
-    padding: 1rem;
-    text-decoration: none;
-    color: inherit;
-    transition: border-color 0.2s ease;
-  }
-
-  .related-card:hover {
-    border-color: var(--accent-gold, #d4af37);
-  }
-
-  .related-card img {
-    width: 100%;
-    aspect-ratio: 1;
-    object-fit: cover;
-    border-radius: 4px;
-    margin-bottom: 0.75rem;
-  }
-</style>
+<link rel="stylesheet" href="{% static 'core_app/css/product_detail.css' %}">
 {% endblock %}
 
 {% block content %}
@@ -257,7 +39,7 @@
   <div class="pdp-info">
     <div class="pdp-category-badge">{{ product.category.name }}</div>
     <h1 class="pdp-title">{{ product.title }}</h1>
-    
+
     <!-- Indian Rupee Display -->
     <div class="pdp-price">₹{{ product.price }}</div>
 
@@ -268,10 +50,10 @@
     </div>
 
     <!-- PURCHASE CONTROLS -->
-    <form action="#" method="POST">
+    <form action="{% url 'cart_add' product.id %}" method="POST" class="add-to-cart-form" data-product-id="{{ product.id }}">
       {% csrf_token %}
       <input type="hidden" name="product_id" value="{{ product.id }}">
-      
+
       <div class="pdp-actions">
         <div class="qty-selector">
           <button type="button" class="qty-btn" onclick="updateQty(-1)">-</button>
@@ -288,7 +70,7 @@
 <!-- RELATED PRODUCTS -->
 {% if related_products %}
 <section class="related-section">
-  <h3 style="color: var(--accent-gold, #d4af37); font-size: 1.25rem;">Complete the Collection</h3>
+  <h3 class="related-title">Complete the Collection</h3>
   <div class="related-grid">
     {% for rel in related_products %}
       <a href="{% url 'product_detail' slug=rel.slug %}" class="related-card">
@@ -297,10 +79,10 @@
         {% else %}
           <img src="{% static 'images/placeholder.png' %}" alt="{{ rel.title }}">
         {% endif %}
-        <div style="font-weight: 600; margin-bottom: 0.25rem;">{{ rel.title }}</div>
-        
+        <div class="related-product-title">{{ rel.title }}</div>
+
         <!-- Indian Rupee Display for Related Cards -->
-        <div style="color: var(--accent-gold, #d4af37); font-size: 0.9rem;">₹{{ rel.price }}</div>
+        <div class="related-product-price">₹{{ rel.price }}</div>
       </a>
     {% endfor %}
   </div>

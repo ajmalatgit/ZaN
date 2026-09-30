@@ -1,0 +1,34 @@
+{% extends 'core_app/base.html' %}
+{% block title %}ZAN | Order Confirmation{% endblock %}
+
+{% block content %}
+<section class="order-confirmation">
+  <h1>Order received</h1>
+  <p>
+    {% if order.is_paid %}
+      Your payment was confirmed and your order is being processed.
+    {% elif order.payment_method == 'COD' %}
+      Your order is confirmed. Pay ₹{{ order.total_amount|floatformat:2 }} when it is delivered.
+    {% else %}
+      Your order is awaiting payment confirmation.
+    {% endif %}
+  </p>
+  <dl class="order-confirmation-details">
+    <dt>Order reference</dt>
+    <dd>{{ order.public_id }}</dd>
+    <dt>Order status</dt>
+    <dd>{{ order.get_status_display }}</dd>
+    <dt>Payment status</dt>
+    <dd>{{ order.get_payment_status_display }}</dd>
+    <dt>Payment method</dt>
+    <dd>{{ order.get_payment_method_display }}</dd>
+    <dt>Total</dt>
+    <dd>₹{{ order.total_amount|floatformat:2 }}</dd>
+  </dl>
+  <h2>Items</h2>
+  {% for item in order.items.all %}
+    <p>{{ item.product_title }} × {{ item.quantity }} — ₹{{ item.line_total|floatformat:2 }}</p>
+  {% endfor %}
+  <a href="{% url 'home' %}" class="zan-btn-outline">Continue shopping</a>
+</section>
+{% endblock %}

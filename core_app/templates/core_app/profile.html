@@ -1,0 +1,60 @@
+{% extends 'core_app/base.html' %}
+{% load static %}
+{% block title %}ZAN | My Account{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/profile.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="profile-page">
+  <h1>My Account</h1>
+  <p class="profile-welcome">Welcome, {{ request.user.get_full_name|default:request.user.username }}.</p>
+
+  <section class="profile-section">
+    <h2>Order history</h2>
+    {% for order in orders %}
+      <article class="profile-order">
+        <header class="profile-order-header">
+          <div>
+            <h3>Order {{ order.public_id }}</h3>
+            <p>Placed {{ order.created_at|date:"d M Y" }}</p>
+          </div>
+          <div class="profile-order-status">
+            <span>Payment: {{ order.get_payment_status_display }}</span>
+            <span>Tracking: {{ order.get_status_display }}</span>
+          </div>
+        </header>
+        <ul class="profile-order-items">
+          {% for item in order.items.all %}
+            <li>{{ item.product_title }} × {{ item.quantity }} — ₹{{ item.line_total|floatformat:2 }}</li>
+          {% endfor %}
+        </ul>
+        <div class="profile-order-footer">
+          <strong>Total: ₹{{ order.total_amount|floatformat:2 }}</strong>
+          {% if order.is_paid %}
+            <a href="{% url 'order_invoice' order.public_id %}" class="profile-invoice-link">Download invoice PDF</a>
+          {% endif %}
+        </div>
+      </article>
+    {% empty %}
+      <p class="profile-empty">You have no orders yet.</p>
+    {% endfor %}
+  </section>
+
+  <section class="profile-section">
+    <h2>Delivery addresses</h2>
+    <div class="profile-address-grid">
+      {% for address in addresses %}
+        <address class="profile-address">
+          <strong>{{ address.full_name }}</strong><br>
+          {{ address.address|linebreaksbr }}<br>
+          {{ address.city }}, {{ address.postal_code }}
+        </address>
+      {% empty %}
+        <p class="profile-empty">Addresses from your orders will appear here.</p>
+      {% endfor %}
+    </div>
+  </section>
+</section>
+{% endblock %}

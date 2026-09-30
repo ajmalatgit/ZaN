@@ -1,0 +1,8 @@
+{% if group.order.payment_method == 'RAZORPAY' and not group.order.is_paid or group.order.payment_status == 'FAILED' or group.order.payment_status == 'REFUNDED' %}
+<span class="seller-awaiting-payment">Awaiting valid payment</span>
+{% else %}
+<form method="post" action="{% url 'update_seller_order_item_status' group.order.public_id item.id %}">
+    {% csrf_token %}
+    <button class="seller-order-action" type="submit">{{ next_label }}</button>
+</form>
+{% endif %}

@@ -1,0 +1,289 @@
+.dashboard-heading {
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.dashboard-heading h1 {
+    color: var(--accent-gold);
+}
+
+.dashboard-heading p {
+    color: var(--text-muted);
+}
+
+.seller-listings-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.seller-add-product {
+    padding: 0.5rem 1rem;
+    font-size: 0.85rem;
+}
+
+.seller-metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.seller-metric,
+.seller-order-card {
+    padding: 1.25rem;
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+.seller-metric {
+    display: grid;
+    gap: 0.45rem;
+}
+
+.seller-metric span,
+.seller-metric small,
+.seller-order-summary span,
+.seller-order-header p,
+.seller-order-total span,
+.seller-order-item-info span {
+    color: var(--text-muted);
+}
+
+.seller-metric strong {
+    color: var(--accent-gold);
+    font-size: 1.6rem;
+}
+
+.seller-recent-orders {
+    margin-bottom: 2rem;
+}
+
+.seller-orders-link,
+.seller-product-edit {
+    color: var(--accent-gold);
+}
+
+.seller-order-summary,
+.seller-order-header,
+.seller-order-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+}
+
+.seller-order-summary {
+    padding: 0.85rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.seller-order-summary > div,
+.seller-order-item-info {
+    display: grid;
+    gap: 0.3rem;
+}
+
+.seller-order-card {
+    margin: 1.25rem 0;
+}
+
+.seller-order-header {
+    align-items: flex-start;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.seller-order-header h2,
+.seller-order-header p {
+    margin: 0.2rem 0;
+}
+
+.seller-order-total {
+    display: grid;
+    text-align: right;
+    gap: 0.3rem;
+}
+
+.seller-order-total strong {
+    color: var(--accent-gold);
+    font-size: 1.2rem;
+}
+
+.seller-delivery-address {
+    margin: 1rem 0;
+}
+
+.seller-delivery-address dt {
+    font-weight: 700;
+}
+
+.seller-delivery-address dd {
+    margin: 0.35rem 0 0;
+    color: var(--text-muted);
+}
+
+.seller-order-item {
+    padding: 1rem 0;
+    border-top: 1px solid var(--border-color);
+}
+
+.seller-order-action {
+    padding: 0.65rem 0.9rem;
+    border: 0;
+    border-radius: 6px;
+    background: #111;
+    color: #fff;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.seller-order-action:hover {
+    background: #333;
+}
+
+.seller-awaiting-payment,
+.seller-stock-low {
+    color: #f87171;
+}
+
+.seller-stock-ok {
+    color: #4ade80;
+}
+
+.seller-back-link {
+    display: inline-block;
+    margin-bottom: 1rem;
+}
+
+.seller-products-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+}
+
+.seller-products-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+    border-radius: 6px;
+    -webkit-overflow-scrolling: touch;
+}
+
+.seller-products-table-wrapper:focus-visible {
+    outline: 2px solid var(--accent-gold);
+    outline-offset: 3px;
+}
+
+.seller-products-header {
+    border-bottom: 1px solid var(--border-color);
+    color: var(--accent-gold);
+    text-align: left;
+}
+
+.seller-products-table th,
+.seller-product-row td {
+    padding: 1rem;
+}
+
+.seller-product-row {
+    border-bottom: 1px solid var(--border-color);
+}
+
+.seller-product-status {
+    color: #4ade80;
+}
+
+.seller-products-empty {
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--text-muted);
+}
+
+.seller-product-actions,
+.admin-product-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.seller-product-actions form,
+.admin-product-actions form {
+    margin: 0;
+}
+
+.seller-product-edit,
+.admin-product-actions a {
+    color: var(--accent-gold);
+}
+
+.seller-product-delete,
+.admin-product-actions button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #f87171;
+    font: inherit;
+    cursor: pointer;
+}
+
+@media (max-width: 700px) {
+    .seller-listings-heading {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .seller-products-table {
+        min-width: 650px;
+        font-size: 0.85rem;
+    }
+
+    .seller-products-table th,
+    .seller-product-row td {
+        padding: 0.65rem 0.45rem;
+    }
+
+    .seller-product-actions {
+        gap: 0.4rem;
+    }
+
+    .seller-order-summary,
+    .seller-order-item,
+    .seller-order-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .seller-order-total {
+        text-align: left;
+    }
+
+    .seller-order-action {
+        min-height: 44px;
+        width: 100%;
+    }
+
+    .seller-order-item form {
+        width: 100%;
+    }
+}
+
+@media (max-width: 420px) {
+    .seller-order-card {
+        padding: 1rem;
+    }
+
+    .seller-order-header h2 {
+        font-size: 1.05rem;
+        overflow-wrap: anywhere;
+    }
+
+    .seller-delivery-address dd {
+        overflow-wrap: anywhere;
+    }
+}

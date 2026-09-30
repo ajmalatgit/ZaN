@@ -1,11 +1,16 @@
 {% extends 'core_app/base.html' %}
+{% load static %}
 {% block title %}ZAN | Create Account{% endblock %}
 
+{% block extra_css %}
+    <link rel="stylesheet" href="{% static 'core_app/css/auth.css' %}">
+{% endblock %}
+
 {% block content %}
-<div class="auth-container" style="max-width: 500px;">
-    <h2 class="auth-title" style="margin-bottom: 0.5rem;">Join ZAN</h2>
-    <p style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-bottom: 1.5rem;">Select Seller account to list items on ZAN portal.</p>
-    
+<div class="auth-container auth-container-register">
+    <h2 class="auth-title auth-title-register">Join ZAN</h2>
+    <p class="auth-intro">Select Seller account to list items on ZAN portal.</p>
+
     <form method="POST">
         {% csrf_token %}
         <div class="form-group">
@@ -35,7 +40,7 @@
             <label>Confirm Password</label>
             <input type="password" name="confirm_password" required>
         </div>
-        <button type="submit" class="btn-gold" style="width: 100%; margin-top: 1rem;">Create Account</button>
+        <button type="submit" class="btn-gold auth-submit">Create Account</button>
     </form>
 </div>
 {% endblock %}

@@ -1,0 +1,154 @@
+{% extends 'core_app/base.html' %}
+{% load static %}
+{% block title %}ZAN | Checkout{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/checkout.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="checkout-page">
+  <h1>Checkout</h1>
+  <div class="checkout-layout">
+    <form method="post" class="checkout-form" id="checkoutForm">
+      {% csrf_token %}
+      {% if form.non_field_errors %}
+        <div class="checkout-errors" role="alert">{{ form.non_field_errors }}</div>
+      {% endif %}
+      {% for field in form %}
+        <div class="checkout-field">
+          {{ field.label_tag }}
+          {{ field }}
+          {% for error in field.errors %}<span class="checkout-field-error">{{ error }}</span>{% endfor %}
+        </div>
+      {% endfor %}
+      <button type="submit" class="btn-gold checkout-submit" id="checkoutSubmit">Continue to payment</button>
+      <p class="checkout-payment-note" id="paymentStatus" aria-live="polite">Choose online payment or pay when your order is delivered.</p>
+    </form>
+
+    <aside class="checkout-summary">
+      <h2>Order summary</h2>
+      {% for item in cart %}
+        <div class="checkout-summary-item">
+          <span>{{ item.product.title }} × {{ item.quantity }}</span>
+          <span>₹{{ item.total_price|floatformat:2 }}</span>
+        </div>
+      {% endfor %}
+      <div class="checkout-summary-total">
+        <strong>Total</strong>
+        <strong>₹{{ total_amount|floatformat:2 }}</strong>
+      </div>
+    </aside>
+  </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<script>
+  (() => {
+    const form = document.getElementById('checkoutForm');
+    const submitButton = form.querySelector('button[type="submit"]');
+    const status = document.getElementById('paymentStatus');
+    const csrfToken = form.querySelector('[name="csrfmiddlewaretoken"]').value;
+    const paymentChoices = form.querySelectorAll('[name="payment_method"]');
+
+    function selectedPaymentMethod() {
+      return form.querySelector('[name="payment_method"]:checked')?.value;
+    }
+
+    function updatePaymentChoice() {
+      if (selectedPaymentMethod() === 'COD') {
+        submitButton.textContent = 'Place order — pay on delivery';
+        status.textContent = 'No online payment is required now. Pay the order total when it is delivered.';
+      } else {
+        submitButton.textContent = 'Continue to payment';
+        status.textContent = 'Pay securely using the methods available through Razorpay.';
+      }
+    }
+
+    paymentChoices.forEach(choice => choice.addEventListener('change', updatePaymentChoice));
+    updatePaymentChoice();
+
+    form.addEventListener('submit', async event => {
+      if (selectedPaymentMethod() === 'COD') return;
+
+      event.preventDefault();
+      if (typeof Razorpay === 'undefined') {
+        status.textContent = 'Payment checkout could not load. Please refresh and try again.';
+        return;
+      }
+
+      submitButton.disabled = true;
+      status.textContent = 'Preparing secure payment...';
+
+      try {
+        const response = await fetch(window.location.href, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': csrfToken
+          }
+        });
+        const data = await response.json();
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || 'Unable to prepare payment.');
+        }
+
+        const checkout = new Razorpay({
+          key: data.key_id,
+          amount: data.amount,
+          currency: data.currency,
+          name: data.name,
+          description: data.description,
+          order_id: data.razorpay_order_id,
+          prefill: data.prefill,
+          handler: async payment => {
+            status.textContent = 'Verifying your payment...';
+            const verification = new FormData();
+            verification.append('razorpay_payment_id', payment.razorpay_payment_id);
+            verification.append('razorpay_order_id', payment.razorpay_order_id);
+            verification.append('razorpay_signature', payment.razorpay_signature);
+
+            try {
+              const verifyResponse = await fetch(data.verify_url, {
+                method: 'POST',
+                body: verification,
+                headers: {
+                  'X-Requested-With': 'XMLHttpRequest',
+                  'X-CSRFToken': csrfToken
+                }
+              });
+              const verifyData = await verifyResponse.json();
+              if (!verifyResponse.ok || !verifyData.success) {
+                throw new Error(verifyData.error || 'Payment verification failed.');
+              }
+              window.location.assign(verifyData.redirect_url);
+            } catch (error) {
+              status.textContent = error.message || 'Unable to prepare payment. Please try again.';
+              submitButton.disabled = false;
+            }
+          },
+          modal: {
+            ondismiss: () => {
+              status.textContent = 'Payment was not completed. You can try again.';
+              submitButton.disabled = false;
+            }
+          },
+          theme: { color: '#d4af37' }
+        });
+
+        checkout.on('payment.failed', failure => {
+          status.textContent = failure.error.description || 'Payment failed. Please try again.';
+          submitButton.disabled = false;
+        });
+        checkout.open();
+      } catch (error) {
+        status.textContent = error.message;
+        submitButton.disabled = false;
+      }
+    });
+  })();
+</script>
+{% endblock %}

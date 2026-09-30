@@ -1,0 +1,91 @@
+.auth-container {
+    max-width: 420px;
+    margin: 3rem auto;
+    background: var(--surface-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 2.5rem 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+}
+
+.auth-container-register {
+    max-width: 500px;
+}
+
+.auth-title {
+    text-align: center;
+    color: var(--accent-gold);
+    margin-bottom: 1.5rem;
+}
+
+.auth-title-register {
+    margin-bottom: 0.5rem;
+}
+
+.auth-intro,
+.auth-prompt {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+}
+
+.auth-intro {
+    margin-bottom: 1.5rem;
+}
+
+.auth-prompt {
+    margin-top: 1.5rem;
+}
+
+.auth-link {
+    color: var(--accent-gold);
+}
+
+.form-group {
+    margin-bottom: 1.2rem;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 0.4rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--bg-dark);
+    border: 1px solid var(--border-color);
+    color: var(--text-light);
+    border-radius: 5px;
+}
+
+.form-group input:focus {
+    border-color: var(--accent-gold);
+    outline: none;
+}
+
+.auth-submit {
+    width: 100%;
+    margin-top: 1rem;
+}
+
+@media (max-width: 560px) {
+    .auth-container {
+        width: 100%;
+        margin: 1rem auto;
+        padding: 1.5rem 1.1rem;
+    }
+
+    .form-group input,
+    .form-group select {
+        min-height: 46px;
+        font-size: 16px;
+    }
+
+    .auth-submit {
+        min-height: 48px;
+    }
+}

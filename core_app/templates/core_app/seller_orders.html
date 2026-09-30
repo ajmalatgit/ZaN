@@ -1,0 +1,63 @@
+{% extends 'core_app/base.html' %}
+{% load static %}
+{% block title %}ZAN | Seller Orders{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/seller_dashboard.css' %}">
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-heading">
+    <h1>Received Orders</h1>
+    <p>Review your order items and move them through delivery.</p>
+</div>
+
+<a class="seller-orders-link seller-back-link" href="{% url 'seller_dashboard' %}">Back to dashboard</a>
+
+{% for group in order_groups %}
+<section class="seller-order-card">
+    <header class="seller-order-header">
+        <div>
+            <h2>Order {{ group.order.public_id }}</h2>
+            <p>{{ group.order.created_at|date:"M j, Y, g:i a" }} · {{ group.order.full_name }}</p>
+        </div>
+        <div class="seller-order-total">
+            <strong>₹{{ group.subtotal|floatformat:2 }}</strong>
+            <span>{{ group.order.get_payment_method_display }} · {{ group.order.get_payment_status_display }}</span>
+        </div>
+    </header>
+
+    <dl class="seller-delivery-address">
+        <dt>Delivery address</dt>
+        <dd>{{ group.order.address }}, {{ group.order.city }} {{ group.order.postal_code }}</dd>
+    </dl>
+
+    <div class="seller-order-items">
+        {% for item in group.items %}
+        <article class="seller-order-item">
+            <div class="seller-order-item-info">
+                <strong>{{ item.product_title }}</strong>
+                <span>{{ item.quantity }} × ₹{{ item.price|floatformat:2 }} = ₹{{ item.line_total|floatformat:2 }}</span>
+                <span class="seller-fulfillment-status">{{ item.get_fulfillment_status_display }}</span>
+            </div>
+            {% if item.fulfillment_status == 'PENDING' %}
+                {% with next_label='Start processing' %}
+                {% include 'core_app/partials/seller_order_action.html' %}
+                {% endwith %}
+            {% elif item.fulfillment_status == 'PROCESSING' %}
+                {% with next_label='Mark out for delivery' %}
+                {% include 'core_app/partials/seller_order_action.html' %}
+                {% endwith %}
+            {% elif item.fulfillment_status == 'SHIPPED' %}
+                {% with next_label='Mark delivered' %}
+                {% include 'core_app/partials/seller_order_action.html' %}
+                {% endwith %}
+            {% endif %}
+        </article>
+        {% endfor %}
+    </div>
+</section>
+{% empty %}
+<p class="seller-products-empty">No orders have been received for your products yet.</p>
+{% endfor %}
+{% endblock %}

@@ -1,0 +1,32 @@
+{% load static %}
+
+<!-- OVERLAY BACKDROP -->
+<div id="cartDrawerBackdrop" class="zan-drawer-backdrop" onclick="toggleCartDrawer(false)"></div>
+
+<!-- OFF-CANVAS CART DRAWER -->
+<aside id="cartDrawer" class="zan-drawer">
+  <!-- HEADER -->
+  <div class="zan-drawer-header">
+    <div class="zan-drawer-title">
+      <h3>Shopping Bag</h3>
+      <span class="zan-cart-badge" id="cartDrawerCount">{{ cart|length }}</span>
+    </div>
+    <button type="button" class="zan-drawer-close" onclick="toggleCartDrawer(false)">&times;</button>
+  </div>
+
+  <!-- CART ITEMS LIST -->
+  <div class="zan-drawer-body" id="cartDrawerItems">
+    {% include 'core_app/cart_items.html' %}
+  </div>
+
+  <!-- FOOTER & CHECKOUT -->
+  <div class="zan-drawer-footer">
+    <div class="zan-summary-row">
+      <span>Subtotal</span>
+      <span class="zan-subtotal-amount">₹<span id="cartDrawerSubtotal">{{ cart.get_total_price }}</span></span>
+    </div>
+    <p class="zan-tax-note">Taxes and shipping calculated at checkout.</p>
+
+    <a href="{% url 'cart_detail' %}" class="zan-btn-checkout">View Cart</a>
+  </div>
+</aside>

@@ -5,58 +5,89 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}ZAN | Premium E-Commerce{% endblock %}</title>
-    
+
     <!-- External Base CSS -->
     <link rel="stylesheet" href="{% static 'core_app/css/base.css' %}">
-    
+
+    <!-- Global UI Components CSS -->
+    <link rel="stylesheet" href="{% static 'core_app/css/cart_drawer.css' %}">
+    <link rel="stylesheet" href="{% static 'core_app/css/nav_search.css' %}">
+    <link rel="stylesheet" href="{% static 'core_app/css/toasts.css' %}">
+
     {% block extra_css %}{% endblock %}
 </head>
 <body>
 
-    <header>
+    <header class="site-header">
         <a href="{% url 'home' %}" class="brand-logo">ZAN</a>
-<nav>
-    <a href="{% url 'home' %}">Shop</a>
-    {% if user.is_authenticated %}
-        {% if user.role == 'SELLER' or user.role == 'ADMIN' %}
-            <a href="{% url 'seller_dashboard' %}" style="color: var(--accent-gold);">Seller Portal</a>
-        {% endif %}
-        {% if user.role == 'ADMIN' %}
-            <a href="{% url 'admin_dashboard' %}" style="color: #f87171;">Admin Panel</a>
-        {% endif %}
-        <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
-    {% else %}
-        <a href="{% url 'login' %}">Login</a>
-        <a href="{% url 'register' %}">Register</a>
-    {% endif %}
-    <a href="#">Cart <span class="cart-badge">0</span></a>
-</nav>
+        <nav aria-label="Main navigation">
+            <a href="{% url 'home' %}">Shop</a>
+            <a href="{% url 'catalog' %}">Catalog</a>
+            {% if user.is_authenticated %}
+                {% if user.role == 'SELLER' or user.role == 'ADMIN' %}
+                    <a href="{% url 'seller_dashboard' %}" class="nav-link-seller">Seller Portal</a>
+                {% endif %}
+                {% if user.role == 'ADMIN' %}
+                    <a href="{% url 'admin_dashboard' %}" class="nav-link-admin">Admin Panel</a>
+                {% endif %}
+                <a href="{% url 'buyer_profile' %}">My Account</a>
+                <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
+            {% else %}
+                <a href="{% url 'login' %}">Login</a>
+                <a href="{% url 'register' %}">Register</a>
+            {% endif %}
+
+            <form class="nav-search" role="search" action="{% url 'catalog' %}" method="get">
+                <label class="visually-hidden" for="navSearchQuery">Search products</label>
+                <input id="navSearchQuery" type="search" name="q" value="{{ request.GET.q }}"
+                       placeholder="Search products..." autocomplete="off">
+                <button type="submit">Search</button>
+            </form>
+
+            <!-- Cart Drawer Trigger Button -->
+            <button type="button" class="zan-nav-cart-btn nav-cart-button"
+                    aria-controls="cartDrawer" aria-expanded="false"
+                    onclick="toggleCartDrawer(true)">
+                Cart <span class="cart-badge" id="navCartCount">{{ cart|length }}</span>
+            </button>
+        </nav>
     </header>
 
     <main>
         {% block content %}{% endblock %}
     </main>
 
+    <section class="toast-stack" id="toastStack" aria-label="Notifications"
+             aria-live="polite" aria-relevant="additions text">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="toast-message toast-{{ message.tags|default:'info' }}"
+                     role="{% if message.tags == 'error' %}alert{% else %}status{% endif %}">
+                    <span class="toast-message-text">{{ message }}</span>
+                    <button class="toast-dismiss" type="button" aria-label="Dismiss notification">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </section>
+
     <footer>
         <div class="footer-grid">
             <div class="footer-col">
-                <a href="#" class="brand-logo" style="font-size: 1.4rem;">ZAN</a>
-                <p style="margin-top: 0.8rem;">Refined quality and timeless style engineered for modern standards.</p>
+                <a href="{% url 'home' %}" class="brand-logo footer-brand-logo">ZAN</a>
+                <p class="footer-intro">Refined quality and timeless style engineered for modern standards.</p>
             </div>
             <div class="footer-col">
                 <h4>Quick Links</h4>
                 <ul>
-                    <li><a href="#">New Arrivals</a></li>
-                    <li><a href="#">Best Sellers</a></li>
-                    <li><a href="#">Special Offers</a></li>
+                    <li><a href="{% url 'catalog' %}">Browse catalog</a></li>
+                    <li><a href="{% url 'cart_detail' %}">Shopping cart</a></li>
                 </ul>
             </div>
             <div class="footer-col">
                 <h4>Customer Care</h4>
                 <ul>
-                    <li><a href="#">Shipping & Returns</a></li>
-                    <li><a href="#">Order Tracking</a></li>
-                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="{% url 'buyer_profile' %}">Order history</a></li>
+                    <li><a href="{% url 'checkout' %}">Checkout</a></li>
                 </ul>
             </div>
         </div>
@@ -65,8 +96,160 @@
         </div>
     </footer>
 
+    <!-- Global Cart Drawer Component -->
+    {% include 'core_app/cart_drawer.html' %}
+
     <!-- External Main JS -->
     <script src="{% static 'core_app/js/main.js' %}"></script>
+
+    <!-- Global Cart Script Handlers -->
+    <script>
+      function getCSRFToken() {
+        const cookieMatch = document.cookie.match(/csrftoken=([^;]+)/);
+        if (cookieMatch) return cookieMatch[1];
+        const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        return csrfInput ? csrfInput.value : '{{ csrf_token }}';
+      }
+
+      function toggleCartDrawer(open) {
+        const drawer = document.getElementById('cartDrawer');
+        const backdrop = document.getElementById('cartDrawerBackdrop');
+        if (!drawer || !backdrop) return;
+
+        drawer.classList.toggle('active', open);
+        backdrop.classList.toggle('active', open);
+        const cartButton = document.querySelector('.nav-cart-button');
+        if (cartButton) cartButton.setAttribute('aria-expanded', String(open));
+      }
+
+      function showToast(message, type = 'success') {
+        const stack = document.getElementById('toastStack');
+        if (!stack || !message) return;
+
+        const toast = document.createElement('div');
+        const normalizedType = ['success', 'error', 'warning', 'info'].includes(type)
+          ? type
+          : 'info';
+        toast.className = `toast-message toast-${normalizedType}`;
+        toast.setAttribute('role', normalizedType === 'error' ? 'alert' : 'status');
+
+        const text = document.createElement('span');
+        text.className = 'toast-message-text';
+        text.textContent = message;
+        toast.appendChild(text);
+
+        const dismiss = document.createElement('button');
+        dismiss.className = 'toast-dismiss';
+        dismiss.type = 'button';
+        dismiss.setAttribute('aria-label', 'Dismiss notification');
+        dismiss.textContent = '×';
+        toast.appendChild(dismiss);
+
+        stack.appendChild(toast);
+        window.setTimeout(() => toast.remove(), 5000);
+      }
+
+      document.addEventListener('click', event => {
+        const dismiss = event.target.closest('.toast-dismiss');
+        if (dismiss) dismiss.closest('.toast-message').remove();
+      });
+
+      function syncCartUI(data) {
+        const navBadge = document.getElementById('navCartCount');
+        const drawerBadge = document.getElementById('cartDrawerCount');
+        const drawerSubtotal = document.getElementById('cartDrawerSubtotal');
+        const drawerItems = document.getElementById('cartDrawerItems');
+        const cartPageItems = document.getElementById('cartPageItems');
+        const cartPageSubtotal = document.getElementById('cartPageSubtotal');
+
+        if (navBadge) navBadge.textContent = data.cart_count;
+        if (drawerBadge) drawerBadge.textContent = data.cart_count;
+        if (drawerSubtotal) drawerSubtotal.textContent = data.total_price;
+        if (cartPageSubtotal) cartPageSubtotal.textContent = data.total_price;
+        if (data.cart_items_html !== undefined) {
+          if (drawerItems) drawerItems.innerHTML = data.cart_items_html;
+          if (cartPageItems) cartPageItems.innerHTML = data.cart_items_html;
+        }
+      }
+
+      function removeFromCart(productId) {
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', getCSRFToken());
+
+        fetch(`/cart/remove/${productId}/`, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+          }
+        })
+        .then(res => {
+          return res.json().catch(() => ({})).then(data => {
+            if (!res.ok || !data.success) {
+              throw new Error(data.error || `Unable to update your cart (HTTP ${res.status}).`);
+            }
+            return data;
+          });
+        })
+        .then(data => {
+          syncCartUI(data);
+          showToast('Item removed from your cart.', 'success');
+        })
+        .catch(err => {
+          console.error('Error removing item from cart:', err);
+          showToast(err.message || 'Unable to remove this item from your cart.', 'error');
+        });
+      }
+
+      function updateCartQuantity(productId, quantity) {
+        if (quantity < 1) return;
+
+        const formData = new FormData();
+        formData.append('csrfmiddlewaretoken', getCSRFToken());
+        formData.append('quantity', quantity);
+        formData.append('override', 'true');
+
+        fetch(`/cart/add/${productId}/`, {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        })
+        .then(res => {
+          return res.json().catch(() => ({})).then(data => {
+            if (!res.ok || !data.success) {
+              throw new Error(data.error || `Unable to update your cart (HTTP ${res.status}).`);
+            }
+            return data;
+          });
+        })
+        .then(data => {
+          syncCartUI(data);
+          showToast('Cart quantity updated.', 'success');
+        })
+        .catch(err => {
+          console.error('Error updating cart quantity:', err);
+          showToast(err.message || 'Unable to update your cart quantity.', 'error');
+        });
+      }
+
+      document.addEventListener('click', event => {
+        const removeButton = event.target.closest('.zan-item-remove');
+        if (removeButton) {
+          removeFromCart(removeButton.dataset.productId);
+          return;
+        }
+
+        const quantityButton = event.target.closest('.zan-item-quantity-change');
+        if (!quantityButton) return;
+
+        const item = quantityButton.closest('.zan-cart-item');
+        const quantity = Number(item.querySelector('.zan-item-quantity').textContent);
+        const delta = Number(quantityButton.dataset.delta);
+        updateCartQuantity(quantityButton.dataset.productId, quantity + delta);
+      });
+    </script>
+
     {% block extra_js %}{% endblock %}
+
 </body>
 </html>

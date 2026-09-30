@@ -1,24 +1,66 @@
 {% extends 'core_app/base.html' %}
+{% load static %}
 {% block title %}ZAN | Executive Control Panel{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/admin_dashboard.css' %}">
+{% endblock %}
+
 {% block content %}
-<div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 2rem;">
-    <h1 style="color: var(--accent-gold);">Executive Admin Control Panel</h1>
-    <p style="color: var(--text-muted);">Global system metrics and administrative management.</p>
+<div class="dashboard-heading">
+    <h1>Executive Admin Control Panel</h1>
+    <p>Global system metrics and administrative management.</p>
 </div>
 
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1.5rem; margin-bottom: 3rem;">
-    <div style="background: var(--surface-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px;">
-        <span style="color: var(--text-muted); font-size: 0.85rem;">Total Platform Users</span>
-        <h2 style="color: var(--accent-gold); font-size: 2rem; margin-top: 0.5rem;">{{ stats.total_users }}</h2>
+<div class="dashboard-stats">
+    <div class="dashboard-stat-card">
+        <span class="dashboard-stat-label">Total Platform Users</span>
+        <h2 class="dashboard-stat-value">{{ stats.total_users }}</h2>
     </div>
-    <div style="background: var(--surface-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px;">
-        <span style="color: var(--text-muted); font-size: 0.85rem;">Verified Sellers</span>
-        <h2 style="color: var(--accent-gold); font-size: 2rem; margin-top: 0.5rem;">{{ stats.total_sellers }}</h2>
+    <div class="dashboard-stat-card">
+        <span class="dashboard-stat-label">Verified Sellers</span>
+        <h2 class="dashboard-stat-value">{{ stats.total_sellers }}</h2>
     </div>
-    <div style="background: var(--surface-card); border: 1px solid var(--border-color); padding: 1.5rem; border-radius: 8px;">
-        <span style="color: var(--text-muted); font-size: 0.85rem;">Total Catalog Items</span>
-        <h2 style="color: var(--accent-gold); font-size: 2rem; margin-top: 0.5rem;">{{ stats.total_products }}</h2>
+    <div class="dashboard-stat-card">
+        <span class="dashboard-stat-label">Total Catalog Items</span>
+        <h2 class="dashboard-stat-value">{{ stats.total_products }}</h2>
     </div>
+</div>
+
+<div class="admin-products-heading">
+    <h2>Product Catalog</h2>
+    <a href="{% url 'add_product' %}" class="btn-gold admin-add-product">+ Add Product</a>
+</div>
+<div class="admin-products-table-wrapper" role="region" aria-label="Product catalog" tabindex="0">
+    <table class="admin-products-table">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Seller</th>
+                <th>Price</th>
+                <th>Visibility</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr>
+                <td>{{ product.title }}</td>
+                <td>{{ product.seller|default:"Unassigned" }}</td>
+                <td>₹{{ product.price }}</td>
+                <td>{% if product.is_active %}Active{% else %}Hidden{% endif %}</td>
+                <td class="admin-product-actions">
+                    <a href="{% url 'edit_product' product.id %}">Edit</a>
+                    <form method="post" action="{% url 'delete_product' product.id %}" onsubmit="return confirm('Delete {{ product.title|escapejs }}? This cannot be undone.');">
+                        {% csrf_token %}
+                        <button type="submit">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="admin-products-empty">No products found.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
 {% endblock %}

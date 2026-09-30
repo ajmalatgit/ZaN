@@ -1,35 +1,90 @@
 {% extends 'core_app/base.html' %}
+{% load static %}
 {% block title %}ZAN | Merchant Portal{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/seller_dashboard.css' %}">
+{% endblock %}
+
 {% block content %}
-<div style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 2rem;">
-    <h1 style="color: var(--accent-gold);">Merchant Dashboard</h1>
-    <p style="color: var(--text-muted);">Welcome back, {{ request.user.company_name|default:request.user.username }}</p>
+<div class="dashboard-heading">
+    <h1>Merchant Dashboard</h1>
+    <p>Welcome back, {{ request.user.company_name|default:request.user.username }}</p>
 </div>
 
-<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+<section class="seller-metrics" aria-label="Seller performance">
+    <article class="seller-metric">
+        <span>Total revenue</span>
+        <strong>₹{{ revenue|floatformat:2 }}</strong>
+        <small>From paid orders</small>
+    </article>
+    <article class="seller-metric">
+        <span>Items sold</span>
+        <strong>{{ items_sold }}</strong>
+        <small>From paid orders</small>
+    </article>
+    <article class="seller-metric">
+        <span>Low stock</span>
+        <strong>{{ low_stock_count }}</strong>
+        <small>Products with 5 or fewer units</small>
+    </article>
+</section>
+
+<section class="seller-recent-orders">
+    <div class="seller-listings-heading">
+        <h3>Recent orders</h3>
+        <a href="{% url 'seller_orders' %}" class="seller-orders-link">View and process orders</a>
+    </div>
+    {% for group in recent_orders %}
+    <article class="seller-order-summary">
+        <div>
+            <strong>Order {{ group.order.public_id }}</strong>
+            <span>{{ group.order.created_at|date:"M j, Y" }} · {{ group.items|length }} line item{{ group.items|length|pluralize }}</span>
+        </div>
+        <span>{{ group.order.get_payment_status_display }} · ₹{{ group.subtotal|floatformat:2 }}</span>
+    </article>
+    {% empty %}
+    <p class="seller-products-empty">No orders received yet.</p>
+    {% endfor %}
+</section>
+
+<div class="seller-listings-heading">
     <h3>Active Store Listings</h3>
-    <a href="{% url 'add_product' %}" class="btn-gold" style="padding: 0.5rem 1rem; font-size: 0.85rem;">+ Add New Product</a>
+    <a href="{% url 'add_product' %}" class="btn-gold seller-add-product">+ Add New Product</a>
 </div>
 
-<table style="width: 100%; border-collapse: collapse; background: var(--surface-card); border: 1px solid var(--border-color);">
-    <thead>
-        <tr style="border-bottom: 1px solid var(--border-color); color: var(--accent-gold); text-align: left;">
-            <th style="padding: 1rem;">Product Title</th>
-            <th style="padding: 1rem;">Price</th>
-            <th style="padding: 1rem;">Status</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for product in products %}
-        <tr style="border-bottom: 1px solid var(--border-color);">
-            <td style="padding: 1rem;">{{ product.title }}</td>
-            <td style="padding: 1rem;">${{ product.price }}</td>
-            <td style="padding: 1rem; color: #4ade80;">Active</td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="3" style="padding: 1.5rem; text-align: center; color: var(--text-muted);">No products listed.</td></tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="seller-products-table-wrapper" role="region" aria-label="Store listings" tabindex="0">
+    <table class="seller-products-table">
+        <thead>
+            <tr class="seller-products-header">
+                <th>Product Title</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for product in products %}
+            <tr class="seller-product-row">
+                <td>{{ product.title }}</td>
+                <td>₹{{ product.price }}</td>
+                <td class="{% if product.stock <= 5 %}seller-stock-low{% else %}seller-stock-ok{% endif %}">
+                    {{ product.stock }}{% if product.stock <= 5 %} · Low{% endif %}
+                </td>
+                <td class="seller-product-status">{% if product.is_active %}Active{% else %}Inactive{% endif %}</td>
+                <td class="seller-product-actions">
+                    <a href="{% url 'edit_product' product.id %}" class="seller-product-edit">Edit</a>
+                    <form method="post" action="{% url 'delete_product' product.id %}" onsubmit="return confirm('Delete {{ product.title|escapejs }}? This cannot be undone.');">
+                        {% csrf_token %}
+                        <button type="submit" class="seller-product-delete">Delete</button>
+                    </form>
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="5" class="seller-products-empty">No products listed.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% endblock %}

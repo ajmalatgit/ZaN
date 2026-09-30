@@ -1,0 +1,138 @@
+{% extends 'core_app/base.html' %}
+{% load static %}
+{% block title %}ZAN | Product Catalog{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/catalog.css' %}">
+{% endblock %}
+
+{% block content %}
+<section class="catalog-page">
+    <div class="catalog-heading">
+        <p class="catalog-eyebrow">ZAN COLLECTION</p>
+        <h1>Product Catalog</h1>
+        {% if query %}<p>Results for “{{ query }}”</p>{% else %}<p>Browse the collection and refine your search.</p>{% endif %}
+    </div>
+
+    <div class="catalog-layout">
+        <aside class="catalog-filters">
+            <h2>Filter products</h2>
+            <form method="get" action="{% url 'catalog' %}" id="catalogFilters">
+                {% if query %}<input type="hidden" name="q" value="{{ query }}">{% endif %}
+
+                <fieldset class="catalog-category-filter">
+                    <legend>Category</legend>
+                    <label>
+                        <input type="radio" name="category" value="" {% if not category_slug %}checked{% endif %}>
+                        All categories
+                    </label>
+                    {% for category in categories %}
+                    <label>
+                        <input type="radio" name="category" value="{{ category.slug }}"
+                               {% if category_slug == category.slug %}checked{% endif %}>
+                        {{ category.name }}
+                    </label>
+                    {% endfor %}
+                </fieldset>
+
+                <fieldset class="catalog-price-filter">
+                    <legend>Price range</legend>
+                    <label for="minPrice">Minimum <output id="minPriceOutput">₹{{ selected_min_price|floatformat:2 }}</output></label>
+                    <input id="minPrice" type="range" name="min_price" min="0"
+                           max="{{ price_slider_max }}" step="0.01" value="{{ selected_min_price }}">
+                    <label for="maxPrice">Maximum <output id="maxPriceOutput">₹{{ selected_max_price|floatformat:2 }}</output></label>
+                    <input id="maxPrice" type="range" name="max_price" min="0"
+                           max="{{ price_slider_max }}" step="0.01" value="{{ selected_max_price }}">
+                    <small>Available price range: ₹{{ catalog_min_price|floatformat:2 }}–₹{{ catalog_max_price|floatformat:2 }}</small>
+                </fieldset>
+
+                {% if price_error %}<p class="catalog-filter-error" role="alert">{{ price_error }}</p>{% endif %}
+                <button class="catalog-filter-submit" type="submit">Apply filters</button>
+                <a class="catalog-filter-reset" href="{% url 'catalog' %}{% if query %}?q={{ query|urlencode }}{% endif %}">Reset filters</a>
+            </form>
+        </aside>
+
+        <section class="catalog-results" aria-label="Products">
+            <div class="catalog-results-heading">
+                <h2>Collection</h2>
+                <span>{{ page_obj.paginator.count }} product{{ page_obj.paginator.count|pluralize }}</span>
+            </div>
+
+            <div class="catalog-product-grid">
+                {% for product in products %}
+                <article class="catalog-product-card">
+                    <a class="catalog-product-link" href="{% url 'product_detail' slug=product.slug %}">
+                        <div class="catalog-product-image">
+                            {% if product.primary_image %}
+                            <img src="{{ product.primary_image.url }}" alt="{{ product.title }}">
+                            {% else %}
+                            <span>No image</span>
+                            {% endif %}
+                        </div>
+                        <div class="catalog-product-info">
+                            <span class="catalog-product-category">{{ product.category.name }}</span>
+                            <h3>{{ product.title }}</h3>
+                            <p class="catalog-product-description">{{ product.description|truncatewords:18 }}</p>
+                            <strong>₹{{ product.price|floatformat:2 }}</strong>
+                        </div>
+                    </a>
+                    <div class="catalog-product-action">
+                        {% if product.stock %}
+                        <button type="button" class="btn-cart zan-btn-add" data-product-id="{{ product.pk }}">Add to Cart</button>
+                        {% else %}
+                        <span class="catalog-out-of-stock">Out of stock</span>
+                        {% endif %}
+                    </div>
+                </article>
+                {% empty %}
+                <p class="catalog-empty">No products match these search and filter options.</p>
+                {% endfor %}
+            </div>
+
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav class="catalog-pagination" aria-label="Catalog pages">
+                {% if page_obj.has_previous %}
+                <a href="?q={{ query|urlencode }}&category={{ category_slug|urlencode }}&min_price={{ selected_min_price }}&max_price={{ selected_max_price }}&page={{ page_obj.previous_page_number }}">Previous</a>
+                {% endif %}
+                {% for page_number in page_obj.paginator.page_range %}
+                    {% if page_number == page_obj.number %}
+                    <span class="current-page" aria-current="page">{{ page_number }}</span>
+                    {% else %}
+                    <a href="?q={{ query|urlencode }}&category={{ category_slug|urlencode }}&min_price={{ selected_min_price }}&max_price={{ selected_max_price }}&page={{ page_number }}">{{ page_number }}</a>
+                    {% endif %}
+                {% endfor %}
+                {% if page_obj.has_next %}
+                <a href="?q={{ query|urlencode }}&category={{ category_slug|urlencode }}&min_price={{ selected_min_price }}&max_price={{ selected_max_price }}&page={{ page_obj.next_page_number }}">Next</a>
+                {% endif %}
+            </nav>
+            {% endif %}
+        </section>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (() => {
+    const minimum = document.getElementById('minPrice');
+    const maximum = document.getElementById('maxPrice');
+    const minimumOutput = document.getElementById('minPriceOutput');
+    const maximumOutput = document.getElementById('maxPriceOutput');
+    if (!minimum || !maximum || !minimumOutput || !maximumOutput) return;
+
+    const syncRange = changed => {
+      if (Number(minimum.value) > Number(maximum.value)) {
+        if (changed === minimum) minimum.value = maximum.value;
+        else maximum.value = minimum.value;
+      }
+      minimum.max = maximum.value;
+      maximum.min = minimum.value;
+      minimumOutput.value = `₹${Number(minimum.value).toFixed(2)}`;
+      maximumOutput.value = `₹${Number(maximum.value).toFixed(2)}`;
+    };
+    minimum.addEventListener('input', () => syncRange(minimum));
+    maximum.addEventListener('input', () => syncRange(maximum));
+    syncRange();
+  })();
+</script>
+{% endblock %}

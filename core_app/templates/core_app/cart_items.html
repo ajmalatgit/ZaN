@@ -1,0 +1,35 @@
+{% for item in cart %}
+  <div class="zan-cart-item" id="cart-item-{{ item.product.id }}">
+    <div class="zan-item-img">
+      {% if item.product.primary_image %}
+        <img src="{{ item.product.primary_image.url }}" alt="{{ item.product.title }}">
+      {% else %}
+        <span class="zan-item-no-image">No image</span>
+      {% endif %}
+    </div>
+
+    <div class="zan-item-details">
+      <h4 class="zan-item-title">{{ item.product.title }}</h4>
+      <div class="zan-item-meta">
+        <span class="zan-item-qty">
+          Qty: <span class="zan-item-quantity">{{ item.quantity }}</span>
+        </span>
+        <span class="zan-item-unit-price">₹{{ item.price }}</span>
+      </div>
+      <div class="zan-item-total">₹{{ item.total_price|floatformat:2 }}</div>
+      <div class="zan-item-quantity-controls" aria-label="Adjust quantity for {{ item.product.title }}">
+        <button type="button" class="zan-item-quantity-change" data-product-id="{{ item.product.id }}" data-delta="-1" aria-label="Decrease quantity">−</button>
+        <button type="button" class="zan-item-quantity-change" data-product-id="{{ item.product.id }}" data-delta="1" aria-label="Increase quantity">+</button>
+      </div>
+    </div>
+
+    <button type="button" class="zan-item-remove" data-product-id="{{ item.product.id }}" title="Remove item" aria-label="Remove {{ item.product.title }} from cart">
+      &times;
+    </button>
+  </div>
+{% empty %}
+  <div class="zan-empty-cart" id="cartEmptyMsg">
+    <p>Your shopping bag is currently empty.</p>
+    <a href="{% url 'home' %}" class="zan-btn-outline" onclick="toggleCartDrawer(false)">Explore Collection</a>
+  </div>
+{% endfor %}

@@ -1,13 +1,18 @@
 {% extends 'core_app/base.html' %}
+{% load static %}
 {% block title %}ZAN | Add New Product{% endblock %}
 
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'core_app/css/add_product.css' %}">
+{% endblock %}
+
 {% block content %}
-<div style="max-width: 600px; margin: 2rem auto; background: var(--surface-card); border: 1px solid var(--border-color); padding: 2rem; border-radius: 8px;">
-    <h2 style="color: var(--accent-gold); margin-bottom: 1.5rem;">List New Product</h2>
-    
+<div class="add-product-container">
+    <h2 class="add-product-title">{% if is_edit %}Edit Product{% else %}List New Product{% endif %}</h2>
+
     <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
-        
+
         {{ form.as_p }}
 
         <!-- Multiple Gallery Images Input -->
@@ -15,10 +20,14 @@
             <label for="id_gallery">Additional Gallery Images:</label>
             <input type="file" name="gallery_images" id="id_gallery" class="form-input" multiple>
         </p>
-        
-        <div style="display: flex; gap: 1rem; margin-top: 2rem;">
-            <button type="submit" class="btn-gold" style="flex: 1;">Publish Product</button>
-            <a href="{% url 'seller_dashboard' %}" style="padding: 0.75rem 1rem; border: 1px solid var(--border-color); color: var(--text-muted); text-decoration: none; border-radius: 5px;">Cancel</a>
+
+        <div class="add-product-actions">
+            <button type="submit" class="btn-gold add-product-submit">{% if is_edit %}Save Changes{% else %}Publish Product{% endif %}</button>
+            {% if request.user.role == 'ADMIN' %}
+                <a href="{% url 'admin_dashboard' %}" class="add-product-cancel">Cancel</a>
+            {% else %}
+                <a href="{% url 'seller_dashboard' %}" class="add-product-cancel">Cancel</a>
+            {% endif %}
         </div>
     </form>
 </div>
