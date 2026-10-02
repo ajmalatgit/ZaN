@@ -44,6 +44,10 @@ body {
     gap: 1rem;
 }
 
+.mobile-menu-toggle {
+    display: none;
+}
+
 .brand-logo {
     font-size: 1.9rem;
     font-weight: 900;
@@ -93,6 +97,49 @@ nav a:hover { color: var(--accent-gold); }
 .site-header input:focus-visible {
     outline: 2px solid var(--accent-gold);
     outline-offset: 3px;
+}
+
+.order-product-thumb {
+    display: grid;
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+    overflow: hidden;
+    place-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--surface-dark);
+    color: var(--text-muted);
+    font-size: 0.62rem;
+    text-align: center;
+}
+
+.order-product-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.product-list-thumb {
+    display: grid;
+    width: 52px;
+    height: 52px;
+    overflow: hidden;
+    place-items: center;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--surface-dark);
+    color: var(--text-muted);
+    font-size: 0.6rem;
+    text-align: center;
+}
+
+.product-list-thumb img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
 }
 
 .cart-badge {
@@ -188,14 +235,6 @@ footer {
     .site-header {
         position: relative;
         align-items: center;
-    }
-
-    .site-header nav a,
-    .nav-cart-button {
-        min-height: 44px;
-        display: inline-flex;
-        align-items: center;
-        padding: 0.35rem 0.2rem;
     }
 
     main {

@@ -13,7 +13,10 @@
   <div class="pdp-gallery">
     <div class="main-image-wrapper">
       {% if product.primary_image %}
-        <img id="primaryView" src="{{ product.primary_image.url }}" alt="{{ product.title }}">
+        <button type="button" class="gallery-view-trigger" data-viewer-image="{{ product.primary_image.url }}"
+                aria-label="View {{ product.title }} image full screen">
+          <img id="primaryView" src="{{ product.primary_image.url }}" alt="{{ product.title }}">
+        </button>
       {% else %}
         <img id="primaryView" src="{% static 'images/placeholder.png' %}" alt="Placeholder">
       {% endif %}
@@ -22,15 +25,17 @@
     <!-- Gallery Thumbnails -->
     <div class="thumbnail-strip">
       {% if product.primary_image %}
-        <div class="thumb-item active" onclick="switchImage('{{ product.primary_image.url }}', this)">
+        <button type="button" class="thumb-item active" data-gallery-image="{{ product.primary_image.url }}"
+                aria-label="Show main product image">
           <img src="{{ product.primary_image.url }}" alt="Primary Image">
-        </div>
+        </button>
       {% endif %}
 
       {% for item in product.gallery_images.all %}
-        <div class="thumb-item" onclick="switchImage('{{ item.image.url }}', this)">
+        <button type="button" class="thumb-item" data-gallery-image="{{ item.image.url }}"
+                aria-label="Show product photo">
           <img src="{{ item.image.url }}" alt="{{ item.alt_text|default:product.title }}">
-        </div>
+        </button>
       {% endfor %}
     </div>
   </div>
@@ -49,6 +54,16 @@
       {{ product.description|linebreaks }}
     </div>
 
+    {% if product.video %}
+    <div class="pdp-product-video">
+      <h2>Product video</h2>
+      <video controls preload="metadata">
+        <source src="{{ product.video.url }}">
+        Your browser does not support video playback.
+      </video>
+    </div>
+    {% endif %}
+
     <!-- PURCHASE CONTROLS -->
     <form action="{% url 'cart_add' product.id %}" method="POST" class="add-to-cart-form" data-product-id="{{ product.id }}">
       {% csrf_token %}
@@ -64,6 +79,134 @@
         <button type="submit" class="btn-add-cart">Add to Cart</button>
       </div>
     </form>
+  </div>
+</div>
+
+<section class="product-reviews" id="reviews">
+  <div class="reviews-heading">
+    <h2>Customer reviews</h2>
+    <p>
+      {% if review_summary.review_count %}
+        <strong>{{ review_summary.average_rating|floatformat:1 }} / 5</strong>
+        · {{ review_summary.review_count }} review{{ review_summary.review_count|pluralize }}
+      {% else %}
+        Be the first to review this product.
+      {% endif %}
+    </p>
+  </div>
+
+  {% if user.is_authenticated and product.seller_id != user.id %}
+  <form class="review-form" method="post" enctype="multipart/form-data"
+        action="{% url 'save_product_review' product.slug %}">
+    {% csrf_token %}
+    <h3>{% if user_review %}Edit your review{% else %}Write a review{% endif %}</h3>
+    <fieldset class="review-rating-field">
+      <legend>Rating</legend>
+      {% for value, label in review_form.fields.rating.choices %}
+      <label>
+        <input type="radio" name="rating" value="{{ value }}"
+               {% if user_review and user_review.rating == value|add:0 %}checked{% elif not user_review and forloop.first %}checked{% endif %}
+               required>
+        <span class="rating-choice-stars" aria-hidden="true">
+          {% for star in "12345" %}
+            {% if forloop.counter <= value|add:0 %}★{% else %}☆{% endif %}
+          {% endfor %}
+        </span>
+        <span class="visually-hidden">{{ value }} out of 5 stars</span>
+      </label>
+      {% endfor %}
+    </fieldset>
+    <label for="reviewBody">Your review</label>
+    <textarea id="reviewBody" name="body" rows="4" maxlength="3000" required>{% if user_review %}{{ user_review.body }}{% endif %}</textarea>
+
+    {% if user_review %}
+      {% if user_review.images.all %}
+      <fieldset class="review-existing-media">
+        <legend>Remove existing photos by checking them</legend>
+        {% for image in user_review.images.all %}
+        <div class="review-existing-photo">
+          <label for="remove-review-photo-{{ image.pk }}">
+            <input id="remove-review-photo-{{ image.pk }}" type="checkbox" name="remove_images" value="{{ image.pk }}">
+            Remove photo
+          </label>
+          <button type="button" data-viewer-image="{{ image.image.url }}" aria-label="View your review photo full screen">
+            <img src="{{ image.image.url }}" alt="Your review photo">
+          </button>
+        </div>
+        {% endfor %}
+      </fieldset>
+      {% endif %}
+      {% if user_review.video %}
+      <label class="review-clear-video">
+        <input type="checkbox" name="clear_video" value="on"> Remove existing review video
+      </label>
+      {% endif %}
+    {% endif %}
+
+    <label for="reviewImages">Add photos (up to 5 total, 10 MB each)</label>
+    <input id="reviewImages" type="file" name="images" accept="image/*" multiple>
+    <label for="reviewVideo">Add an optional video (MP4, WebM, or MOV; up to 50 MB)</label>
+    <input id="reviewVideo" type="file" name="video" accept="video/mp4,video/webm,video/quicktime">
+    <button type="submit" class="btn-gold">{% if user_review %}Save review{% else %}Post review{% endif %}</button>
+  </form>
+  {% elif not user.is_authenticated %}
+  <p class="review-sign-in"><a href="{% url 'login' %}?next={{ request.path }}">Sign in</a> to write a review.</p>
+  {% endif %}
+
+  <div class="review-list">
+    {% for review in reviews %}
+    <article class="review-card">
+      <header>
+        {% if review.user.profile_photo %}
+        <img class="review-avatar" src="{{ review.user.profile_photo.url }}" alt="">
+        {% endif %}
+        <strong>{{ review.user.get_full_name|default:review.user.username }}</strong>
+        <span class="review-stars" aria-label="{{ review.rating }} out of 5 stars">
+          {% for star in "12345" %}
+            {% if forloop.counter <= review.rating %}★{% else %}☆{% endif %}
+          {% endfor %}
+        </span>
+        <time datetime="{{ review.created_at|date:'c' }}">{{ review.created_at|date:"d M Y" }}</time>
+      </header>
+      <p>{{ review.body|linebreaksbr }}</p>
+      {% if review.images.all %}
+      <div class="review-photo-grid">
+        {% for image in review.images.all %}
+        <button type="button" data-viewer-image="{{ image.image.url }}" aria-label="View review photo full screen">
+          <img src="{{ image.image.url }}" alt="Photo added by {{ review.user.username }}" loading="lazy">
+        </button>
+        {% endfor %}
+      </div>
+      {% endif %}
+      {% if review.video %}
+      <video class="review-video" controls preload="metadata">
+        <source src="{{ review.video.url }}">
+        Your browser does not support video playback.
+      </video>
+      {% endif %}
+      {% if user.is_authenticated and review.user_id == user.id %}
+      <a class="review-edit-link" href="#reviews">Edit your review</a>
+      <form method="post" action="{% url 'delete_product_review' review.id %}"
+            onsubmit="return confirm('Delete your review?');">
+        {% csrf_token %}
+        <button type="submit" class="review-delete-button">Delete review</button>
+      </form>
+      {% endif %}
+    </article>
+    {% empty %}
+    <p class="review-empty">No reviews yet.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<div class="media-viewer" id="mediaViewer" role="dialog" aria-modal="true"
+     aria-label="Full-screen product photo" hidden>
+  <button class="media-viewer-close" type="button" aria-label="Close photo viewer">×</button>
+  <p class="media-viewer-hint">Scroll or use + / − to zoom. Drag to move around.</p>
+  <button class="media-viewer-zoom" type="button" data-zoom="out" aria-label="Zoom out">−</button>
+  <button class="media-viewer-zoom" type="button" data-zoom="in" aria-label="Zoom in">+</button>
+  <div class="media-viewer-stage">
+    <img class="media-viewer-image" alt="">
   </div>
 </div>
 
@@ -90,14 +233,6 @@
 {% endif %}
 
 <script>
-  function switchImage(imageUrl, element) {
-    document.getElementById('primaryView').src = imageUrl;
-    document.querySelectorAll('.thumb-item').forEach(thumb => {
-      thumb.classList.remove('active');
-    });
-    element.classList.add('active');
-  }
-
   function updateQty(delta) {
     const qtyInput = document.getElementById('qtyInput');
     let currentQty = parseInt(qtyInput.value) || 1;
@@ -106,4 +241,5 @@
     qtyInput.value = currentQty;
   }
 </script>
+<script src="{% static 'core_app/js/product_gallery.js' %}"></script>
 {% endblock %}

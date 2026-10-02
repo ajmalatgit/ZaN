@@ -27,6 +27,55 @@
     </div>
 </div>
 
+<section class="admin-seller-management">
+    <div class="admin-products-heading">
+        <h2>Seller Accounts</h2>
+        <form method="post" action="{% url 'create_seller_invitation' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn-gold admin-add-product">Generate seller invitation</button>
+        </form>
+    </div>
+    {% if seller_invite_link %}
+    <div class="seller-invite-link" role="status">
+        <p>Share this single-use seller link. It expires in 7 days.</p>
+        <input type="text" value="{{ seller_invite_link }}" readonly aria-label="Seller invitation link"
+               onclick="this.select()">
+    </div>
+    {% endif %}
+    <div class="admin-products-table-wrapper" role="region" aria-label="Seller accounts" tabindex="0">
+        <table class="admin-products-table">
+            <thead>
+                <tr><th>Seller</th><th>Company</th><th>Status</th><th>Actions</th></tr>
+            </thead>
+            <tbody>
+                {% for seller in sellers %}
+                <tr>
+                    <td>{{ seller.username }}</td>
+                    <td>{{ seller.company_name|default:"—" }}</td>
+                    <td>{% if seller.is_active %}Active{% else %}Deactivated{% endif %}</td>
+                    <td>
+                        {% if not seller.is_superuser %}
+                        <form method="post" action="{% url 'set_seller_active' seller.id %}">
+                            {% csrf_token %}
+                            {% if seller.is_active %}
+                            <input type="hidden" name="is_active" value="false">
+                            <button type="submit">Remove seller access</button>
+                            {% else %}
+                            <input type="hidden" name="is_active" value="true">
+                            <button type="submit">Restore seller access</button>
+                            {% endif %}
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% empty %}
+                <tr><td colspan="4" class="admin-products-empty">No seller accounts found.</td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
 <div class="admin-products-heading">
     <h2>Product Catalog</h2>
     <a href="{% url 'add_product' %}" class="btn-gold admin-add-product">+ Add Product</a>
@@ -35,6 +84,7 @@
     <table class="admin-products-table">
         <thead>
             <tr>
+                <th>Photo</th>
                 <th>Product</th>
                 <th>Seller</th>
                 <th>Price</th>
@@ -45,6 +95,15 @@
         <tbody>
             {% for product in products %}
             <tr>
+                <td>
+                    <span class="product-list-thumb">
+                        {% if product.primary_image %}
+                        <img src="{{ product.primary_image.url }}" alt="{{ product.title }}" loading="lazy">
+                        {% else %}
+                        <span aria-hidden="true">No image</span>
+                        {% endif %}
+                    </span>
+                </td>
                 <td>{{ product.title }}</td>
                 <td>{{ product.seller|default:"Unassigned" }}</td>
                 <td>₹{{ product.price }}</td>
@@ -58,7 +117,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="admin-products-empty">No products found.</td></tr>
+            <tr><td colspan="6" class="admin-products-empty">No products found.</td></tr>
             {% endfor %}
         </tbody>
     </table>

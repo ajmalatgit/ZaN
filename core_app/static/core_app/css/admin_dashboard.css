@@ -49,6 +49,44 @@
     color: var(--accent-gold);
 }
 
+.admin-seller-management {
+    margin-bottom: 2.5rem;
+}
+
+.admin-seller-management .admin-products-table {
+    min-width: 560px;
+}
+
+.admin-seller-management button {
+    min-height: 40px;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--surface-dark);
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+.seller-invite-link {
+    display: grid;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+    padding: 1rem;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    background: var(--surface-card);
+}
+
+.seller-invite-link input {
+    width: 100%;
+    min-height: 44px;
+    padding: 0.6rem;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    background: var(--surface-dark);
+    color: var(--text-light);
+}
+
 .admin-add-product {
     padding: 0.5rem 1rem;
     font-size: 0.85rem;
@@ -66,7 +104,7 @@
 
 .admin-products-table {
     width: 100%;
-    min-width: 650px;
+    min-width: 720px;
     border-collapse: collapse;
     background: var(--surface-card);
     border: 1px solid var(--border-color);

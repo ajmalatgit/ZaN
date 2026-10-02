@@ -57,7 +57,9 @@
     <table class="seller-products-table">
         <thead>
             <tr class="seller-products-header">
+                <th>Photo</th>
                 <th>Product Title</th>
+                <th>Seller</th>
                 <th>Price</th>
                 <th>Stock</th>
                 <th>Status</th>
@@ -67,7 +69,17 @@
         <tbody>
             {% for product in products %}
             <tr class="seller-product-row">
+                <td>
+                    <span class="product-list-thumb">
+                        {% if product.primary_image %}
+                        <img src="{{ product.primary_image.url }}" alt="{{ product.title }}" loading="lazy">
+                        {% else %}
+                        <span aria-hidden="true">No image</span>
+                        {% endif %}
+                    </span>
+                </td>
                 <td>{{ product.title }}</td>
+                <td>{{ product.seller.company_name|default:product.seller.username }}</td>
                 <td>₹{{ product.price }}</td>
                 <td class="{% if product.stock <= 5 %}seller-stock-low{% else %}seller-stock-ok{% endif %}">
                     {{ product.stock }}{% if product.stock <= 5 %} · Low{% endif %}
@@ -82,7 +94,7 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="5" class="seller-products-empty">No products listed.</td></tr>
+            <tr><td colspan="7" class="seller-products-empty">No products listed.</td></tr>
             {% endfor %}
         </tbody>
     </table>

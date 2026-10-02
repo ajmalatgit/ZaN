@@ -1,0 +1,205 @@
+.notification-menu {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.notification-menu-toggle {
+    position: relative;
+    display: flex;
+    width: 40px;
+    height: 40px;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 1px solid var(--border-color);
+    border-radius: 50%;
+    background: var(--surface-card);
+    color: var(--text-light);
+    cursor: pointer;
+}
+
+.notification-menu-toggle svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+}
+
+.notification-unread-dot {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--surface-dark);
+    border-radius: 50%;
+    background: #ef4444;
+}
+
+.notification-unread-dot[hidden] {
+    display: none;
+}
+
+.notification-panel {
+    position: absolute;
+    z-index: 5;
+    top: calc(100% + 0.55rem);
+    right: 0;
+    display: flex;
+    width: min(360px, calc(100vw - 2rem));
+    max-height: min(480px, calc(100vh - 6rem));
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    background: var(--surface-card);
+    box-shadow: 0 12px 32px rgb(0 0 0 / 55%);
+}
+
+.notification-panel[hidden] {
+    display: none;
+}
+
+.notification-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.9rem 1rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notification-panel-header h2 {
+    color: var(--accent-gold);
+    font-size: 1rem;
+}
+
+.notification-unread-count {
+    color: var(--text-muted);
+    font-size: 0.8rem;
+}
+
+.notification-list {
+    display: grid;
+    overflow-y: auto;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notification-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: 0.7rem;
+    padding: 0.85rem 0.9rem;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.notification-item:last-child {
+    border-bottom: 0;
+}
+
+.notification-item.is-unread {
+    background: rgb(212 175 55 / 7%);
+}
+
+.notification-item-content {
+    display: grid;
+    min-width: 0;
+    gap: 0.25rem;
+}
+
+.notification-item-title {
+    color: var(--text-light);
+    font-size: 0.9rem;
+    font-weight: 700;
+    overflow-wrap: anywhere;
+}
+
+.notification-item-message {
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    overflow-wrap: anywhere;
+}
+
+.notification-item time {
+    color: var(--text-muted);
+    font-size: 0.72rem;
+}
+
+.notification-remove {
+    display: grid;
+    width: 32px;
+    height: 32px;
+    place-items: center;
+    border: 1px solid transparent;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 1.2rem;
+    cursor: pointer;
+}
+
+.notification-remove:hover,
+.notification-remove:focus-visible {
+    border-color: var(--border-color);
+    color: var(--text-light);
+}
+
+.notification-empty {
+    padding: 1.25rem 1rem;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    text-align: center;
+}
+
+@media (max-width: 760px) {
+    .notification-menu-toggle {
+        width: 40px;
+        height: 40px;
+        flex: 0 0 40px;
+    }
+
+    .notification-panel {
+        position: fixed;
+        top: 4.75rem;
+        right: 0.5rem;
+        width: min(360px, calc(100vw - 1rem));
+        max-height: min(70vh, 480px);
+    }
+}
+
+@media (max-width: 380px) {
+    .site-header {
+        column-gap: 0.25rem;
+    }
+
+    .site-header > .brand-logo {
+        font-size: 1.45rem;
+        letter-spacing: 3px;
+    }
+
+    .nav-utilities {
+        gap: 0.2rem;
+    }
+
+    .mobile-menu-toggle {
+        width: 40px;
+        height: 40px;
+    }
+
+    .mobile-search-toggle,
+    .nav-utilities .nav-cart-button,
+    .account-menu-toggle,
+    .notification-menu-toggle {
+        width: 36px;
+        height: 36px;
+        min-height: 36px;
+        flex-basis: 36px;
+    }
+}

@@ -35,6 +35,13 @@
     <div class="seller-order-items">
         {% for item in group.items %}
         <article class="seller-order-item">
+            <span class="order-product-thumb">
+                {% if item.product and item.product.primary_image %}
+                <img src="{{ item.product.primary_image.url }}" alt="{{ item.product_title }}" loading="lazy">
+                {% else %}
+                <span aria-hidden="true">No image</span>
+                {% endif %}
+            </span>
             <div class="seller-order-item-info">
                 <strong>{{ item.product_title }}</strong>
                 <span>{{ item.quantity }} × ₹{{ item.price|floatformat:2 }} = ₹{{ item.line_total|floatformat:2 }}</span>

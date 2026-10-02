@@ -2,6 +2,8 @@ import hashlib
 import hmac
 import json
 import logging
+import secrets
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from html import escape
 from io import BytesIO
@@ -11,7 +13,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.core.paginator import Paginator
-from django.db.models import DecimalField, F, Max, Min, Q, Sum
+from django.db.models import Avg, Count, DecimalField, F, Max, Min, Prefetch, Q, Sum
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
@@ -29,9 +31,25 @@ from reportlab.lib.units import mm
 from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from .cart import Cart
-from .forms import CheckoutForm, ProductForm
+from .forms import (
+    CheckoutForm,
+    ProductForm,
+    ProductReviewForm,
+    RegisterForm,
+    UserProfileForm,
+)
 from .decorators import admin_required, seller_required
-from .models import Category, Order, OrderItem, Product, ProductImage, User
+from .models import (
+    Category,
+    Order,
+    OrderItem,
+    Product,
+    ProductImage,
+    ProductReview,
+    ProductReviewImage,
+    SellerInvitation,
+    User,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -286,36 +304,58 @@ def catalog(request):
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.contrib import messages
-from django import forms
 
-# Registration Form
-class RegisterForm(forms.ModelForm):
-    password = forms.CharField(widget=forms.PasswordInput)
-    confirm_password = forms.CharField(widget=forms.PasswordInput)
+def get_valid_seller_invitation(token):
+    token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+    return SellerInvitation.objects.filter(
+        token_hash=token_hash,
+        used_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    ).first()
 
-    class Meta:
-        model = User
-        fields = ['username', 'email', 'phone_number', 'role', 'company_name']
 
-    def clean(self):
-        cleaned_data = super().clean()
-        if cleaned_data.get('password') != cleaned_data.get('confirm_password'):
-            raise forms.ValidationError("Passwords do not match.")
-        return cleaned_data
+def register_view(request, invitation_token=None):
+    invitation = (
+        get_valid_seller_invitation(invitation_token)
+        if invitation_token
+        else None
+    )
+    if invitation_token and invitation is None:
+        messages.error(request, 'This seller invitation is invalid, expired, or already used.')
+        return redirect('register')
 
-def register_view(request):
     if request.method == 'POST':
         form = RegisterForm(request.POST)
         if form.is_valid():
-            user = form.save(commit=False)
-            user.set_password(form.cleaned_data['password'])
-            user.save()
+            with transaction.atomic():
+                if invitation_token:
+                    token_hash = hashlib.sha256(invitation_token.encode('utf-8')).hexdigest()
+                    invitation = SellerInvitation.objects.select_for_update().filter(
+                        token_hash=token_hash,
+                        used_at__isnull=True,
+                        expires_at__gt=timezone.now(),
+                    ).first()
+                    if invitation is None:
+                        messages.error(request, 'This seller invitation is invalid, expired, or already used.')
+                        return redirect('register')
+
+                user = form.save(commit=False)
+                user.role = User.Role.SELLER if invitation_token else User.Role.BUYER
+                user.set_password(form.cleaned_data['password'])
+                user.save()
+                if invitation:
+                    invitation.used_at = timezone.now()
+                    invitation.save(update_fields=['used_at'])
+
             login(request, user)
             messages.success(request, f"Welcome to ZAN, {user.username}!")
             return redirect('home')
     else:
         form = RegisterForm()
-    return render(request, 'core_app/register.html', {'form': form})
+    return render(request, 'core_app/register.html', {
+        'form': form,
+        'seller_invitation': invitation is not None,
+    })
 
 def login_view(request):
     if request.method == 'POST':
@@ -339,10 +379,14 @@ def logout_view(request):
 # Gated Seller Dashboard
 @seller_required
 def seller_dashboard(request):
-    products = Product.objects.filter(seller=request.user).select_related('category')
+    own_products = Product.objects.filter(seller=request.user).select_related('category')
+    products = Product.objects.filter(seller__isnull=False).select_related(
+        'category',
+        'seller',
+    ).order_by('title')
     return render(request, 'core_app/seller_dashboard.html', {
         'products': products,
-        'low_stock_count': products.filter(stock__lte=5).count(),
+        'low_stock_count': own_products.filter(stock__lte=5).count(),
         **get_seller_metrics(request.user),
         'recent_orders': get_seller_order_groups(request.user, limit=5),
     })
@@ -398,14 +442,56 @@ def update_seller_order_item_status(request, public_id, item_id):
 def admin_dashboard(request):
     stats = {
         'total_users': User.objects.count(),
-        'total_sellers': User.objects.filter(role=User.Role.SELLER).count(),
+        'total_sellers': User.objects.filter(
+            role=User.Role.SELLER,
+            is_active=True,
+        ).count(),
         'total_products': Product.objects.count(),
     }
     products = Product.objects.select_related('category', 'seller').order_by('title')
+    sellers = User.objects.filter(role=User.Role.SELLER).order_by('username')
+    seller_invitations = SellerInvitation.objects.filter(
+        used_at__isnull=True,
+        expires_at__gt=timezone.now(),
+    ).order_by('-created_at')
     return render(request, 'core_app/admin_dashboard.html', {
         'stats': stats,
         'products': products,
+        'sellers': sellers,
+        'seller_invitations': seller_invitations,
+        'seller_invite_link': request.session.pop('seller_invite_link', ''),
     })
+
+
+@admin_required
+@require_POST
+def create_seller_invitation(request):
+    raw_token = secrets.token_urlsafe(32)
+    SellerInvitation.objects.create(
+        token_hash=hashlib.sha256(raw_token.encode('utf-8')).hexdigest(),
+        created_by=request.user,
+        expires_at=timezone.now() + timedelta(days=7),
+    )
+    invite_path = reverse('seller_register', args=[raw_token])
+    request.session['seller_invite_link'] = request.build_absolute_uri(invite_path)
+    messages.success(request, 'Seller invitation created. It expires in 7 days and can be used once.')
+    return redirect('admin_dashboard')
+
+
+@admin_required
+@require_POST
+def set_seller_active(request, seller_id):
+    seller = get_object_or_404(User, pk=seller_id, role=User.Role.SELLER)
+    is_active = request.POST.get('is_active') == 'true'
+    seller.is_active = is_active
+    seller.save(update_fields=['is_active'])
+    if not is_active:
+        Product.objects.filter(seller=seller).update(is_active=False)
+        messages.success(request, f'{seller.username} was deactivated and their products were hidden.')
+    else:
+        messages.success(request, f'{seller.username} was reactivated. Review and republish their products as needed.')
+    return redirect('admin_dashboard')
+
 
 @seller_required
 def add_product(request):
@@ -443,7 +529,7 @@ def product_management_queryset(user):
     products = Product.objects.select_related('category', 'seller')
     if user.role == User.Role.ADMIN or user.is_superuser:
         return products
-    return products.filter(seller=user)
+    return products.filter(seller__isnull=False)
 
 
 @seller_required
@@ -498,11 +584,105 @@ def product_detail(request, slug):
         is_active=True
     ).exclude(id=product.id)[:4]
 
+    user_review = (
+        product.reviews.filter(user=request.user).prefetch_related('images').first()
+        if request.user.is_authenticated
+        else None
+    )
     context = {
         'product': product,
         'related_products': related_products,
+        'reviews': product.reviews.select_related('user').prefetch_related('images'),
+        'review_form': ProductReviewForm(instance=user_review),
+        'review_summary': product.reviews.aggregate(
+            average_rating=Avg('rating'),
+            review_count=Count('pk'),
+        ),
+        'user_review': user_review,
     }
     return render(request, 'core_app/product_detail.html', context)
+
+
+@login_required(login_url='login')
+@require_POST
+def save_product_review(request, slug):
+    product = get_object_or_404(Product, slug=slug, is_active=True)
+    if product.seller_id == request.user.pk:
+        messages.error(request, 'You cannot review your own product.')
+        return redirect('product_detail', slug=slug)
+
+    with transaction.atomic():
+        Product.objects.select_for_update().get(pk=product.pk)
+        review = ProductReview.objects.filter(product=product, user=request.user).first()
+        form = ProductReviewForm(
+            request.POST,
+            request.FILES,
+            instance=review,
+        )
+        if not form.is_valid():
+            for error in form.non_field_errors():
+                messages.error(request, error)
+            for field_errors in form.errors.values():
+                for error in field_errors:
+                    messages.error(request, error)
+            return redirect('product_detail', slug=slug)
+
+        remove_ids = request.POST.getlist('remove_images')
+        existing_images = (
+            review.images.exclude(pk__in=remove_ids).count()
+            if review else 0
+        )
+        new_images = form.cleaned_data['images']
+        if existing_images + len(new_images) > 5:
+            messages.error(request, 'A review can include up to 5 photos.')
+            return redirect('product_detail', slug=slug)
+
+        review = form.save(commit=False)
+        review.product = product
+        review.user = request.user
+        old_video_name = review.video.name if review.video else ''
+        clear_existing_video = (
+            form.cleaned_data['clear_video']
+            and 'video' not in request.FILES
+            and review.video
+        )
+        if clear_existing_video:
+            review.video.delete(save=False)
+            review.video = ''
+        review.save()
+        if remove_ids:
+            removed_images = review.images.filter(pk__in=remove_ids)
+            for image in removed_images:
+                image.image.storage.delete(image.image.name)
+            removed_images.delete()
+        if (
+            old_video_name
+            and old_video_name != review.video.name
+            and not clear_existing_video
+        ):
+            review.video.storage.delete(old_video_name)
+        ProductReviewImage.objects.bulk_create([
+            ProductReviewImage(review=review, image=image)
+            for image in new_images
+        ])
+
+    messages.success(request, 'Your product review was saved.')
+    return redirect('product_detail', slug=slug)
+
+
+@login_required(login_url='login')
+@require_POST
+def delete_product_review(request, review_id):
+    review = get_object_or_404(ProductReview, pk=review_id, user=request.user)
+    slug = review.product.slug
+    for image in review.images.all():
+        image.image.storage.delete(image.image.name)
+    if review.video:
+        review.video.delete(save=False)
+    review.delete()
+    messages.success(request, 'Your product review was deleted.')
+    return redirect('product_detail', slug=slug)
+
 
 @require_POST
 def cart_add(request, product_id):
@@ -710,9 +890,33 @@ def order_confirmation(request, public_id):
 
 @login_required(login_url='login')
 def buyer_profile(request):
+    profile_form = UserProfileForm(instance=request.user)
+    if request.method == 'POST':
+        profile_form = UserProfileForm(
+            request.POST,
+            request.FILES,
+            instance=request.user,
+        )
+        if profile_form.is_valid():
+            old_photo = request.user.profile_photo
+            profile_form.save()
+            if (
+                old_photo
+                and old_photo.name != request.user.profile_photo.name
+            ):
+                old_photo.storage.delete(old_photo.name)
+            messages.success(request, 'Your profile photo was updated.')
+            return redirect('buyer_profile')
+        messages.error(request, 'Please choose a valid profile photo.')
+
     orders = list(
         Order.objects.filter(user=request.user)
-        .prefetch_related('items')
+        .prefetch_related(
+            Prefetch(
+                'items',
+                queryset=OrderItem.objects.select_related('product'),
+            )
+        )
         .order_by('-created_at')
     )
     addresses = []
@@ -731,6 +935,7 @@ def buyer_profile(request):
     return render(request, 'core_app/profile.html', {
         'orders': orders,
         'addresses': addresses,
+        'profile_form': profile_form,
     })
 
 

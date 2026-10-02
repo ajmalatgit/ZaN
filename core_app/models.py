@@ -1,7 +1,31 @@
 import uuid
+from datetime import timedelta
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import FileExtensionValidator, MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils import timezone
+
+
+def validate_image_size(upload):
+    if upload.size > 10 * 1024 * 1024:
+        raise ValidationError('Image files must be 10 MB or smaller.')
+
+
+def validate_video_size(upload):
+    if upload.size > 50 * 1024 * 1024:
+        raise ValidationError('Video files must be 50 MB or smaller.')
+
+
+video_validators = [
+    FileExtensionValidator(allowed_extensions=['mp4', 'webm', 'mov']),
+    validate_video_size,
+]
+
+
+def seller_invitation_expiration():
+    return timezone.now() + timedelta(days=7)
 
 class Category(models.Model):
     name = models.CharField(max_length=100)
@@ -30,6 +54,11 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     stock = models.PositiveIntegerField(default=0)
     primary_image = models.ImageField(upload_to='products/%Y/%m/')
+    video = models.FileField(
+        upload_to='products/videos/%Y/%m/',
+        blank=True,
+        validators=video_validators,
+    )
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -44,6 +73,75 @@ class ProductImage(models.Model):
 
     def __str__(self):
         return f"Gallery Image for {self.product.title}"
+
+
+class ProductReview(models.Model):
+    product = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='product_reviews',
+    )
+    rating = models.PositiveSmallIntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+    )
+    body = models.TextField(max_length=3000)
+    video = models.FileField(
+        upload_to='reviews/videos/%Y/%m/',
+        blank=True,
+        validators=video_validators,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(rating__gte=1, rating__lte=5),
+                name='product_review_rating_between_one_and_five',
+            ),
+            models.UniqueConstraint(
+                fields=['product', 'user'],
+                name='one_review_per_user_product',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.rating}/5 review by {self.user} for {self.product}'
+
+
+class ProductReviewImage(models.Model):
+    review = models.ForeignKey(
+        ProductReview,
+        on_delete=models.CASCADE,
+        related_name='images',
+    )
+    image = models.ImageField(
+        upload_to='reviews/images/%Y/%m/',
+        validators=[validate_image_size],
+    )
+
+
+class SellerInvitation(models.Model):
+    token_hash = models.CharField(max_length=64, unique=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='seller_invitations',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField(default=seller_invitation_expiration)
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_valid(self):
+        return self.used_at is None and self.expires_at > timezone.now()
 
 
 class Order(models.Model):
@@ -183,6 +281,11 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=Role.choices, default=Role.BUYER)
     phone_number = models.CharField(max_length=15, blank=True)
     company_name = models.CharField(max_length=100, blank=True)
+    profile_photo = models.ImageField(
+        upload_to='profiles/%Y/%m/',
+        blank=True,
+        validators=[validate_image_size],
+    )
 
     def save(self, *args, **kwargs):
         # Automatically classify superusers as ADMIN role

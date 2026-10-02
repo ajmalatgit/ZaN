@@ -1,15 +1,35 @@
 from decimal import Decimal
+from datetime import timedelta
 import hashlib
 import hmac
 import json
+from io import BytesIO
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
+from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import override_settings
 from django.test import TestCase
 from django.urls import reverse
+from PIL import Image
 
 from .cart import Cart
-from .models import Category, Order, OrderItem, Product, User
+from .models import (
+    Category,
+    Order,
+    OrderItem,
+    Product,
+    ProductReview,
+    ProductReviewImage,
+    SellerInvitation,
+    User,
+)
+
+
+def make_test_image(name='photo.jpg'):
+    buffer = BytesIO()
+    Image.new('RGB', (2, 2), color='gold').save(buffer, format='JPEG')
+    return SimpleUploadedFile(name, buffer.getvalue(), content_type='image/jpeg')
 
 
 class SessionCartTests(TestCase):
@@ -278,6 +298,20 @@ class CatalogTests(TestCase):
         self.assertContains(response, 'Search products')
         self.assertContains(response, 'id="toastStack"')
         self.assertContains(response, 'Dismiss notification')
+        self.assertContains(response, 'class="mobile-menu-toggle"')
+        self.assertContains(response, 'aria-controls="mainNavigation"')
+        self.assertContains(response, 'class="nav-utilities"')
+        self.assertContains(response, 'id="navCartCount"')
+        self.assertContains(response, 'placeholder="Search products..."')
+        self.assertContains(response, 'class="mobile-search-toggle"')
+        self.assertContains(response, 'class="account-menu-toggle"')
+        self.assertContains(response, 'aria-label="Account menu"')
+        self.assertContains(response, 'id="accountMenu"')
+        self.assertNotContains(response, 'name="role"')
+        self.assertContains(response, 'class="notification-menu"')
+        self.assertContains(response, 'aria-controls="notificationPanel"')
+        self.assertContains(response, 'id="notificationPanel"')
+        self.assertContains(response, 'class="notification-unread-dot"')
 
     def test_homepage_shows_eight_latest_active_products_and_links_to_catalog(self):
         for index in range(9):
@@ -776,9 +810,20 @@ class BuyerProfileAndInvoiceTests(TestCase):
             total_amount=Decimal('251.00'),
             payment_status=Order.PaymentStatus.PAID,
         )
+        category = Category.objects.create(name='Accessories', slug='buyer-order-accessories')
+        product = Product.objects.create(
+            category=category,
+            title='Buyer History Wallet',
+            slug='buyer-history-wallet',
+            price=Decimal('125.50'),
+            stock=2,
+            primary_image='products/wallet.jpg',
+        )
         OrderItem.objects.create(
             order=self.order,
+            product=product,
             product_title='Leather Wallet',
+            seller=None,
             price=Decimal('125.50'),
             quantity=2,
         )
@@ -811,6 +856,8 @@ class BuyerProfileAndInvoiceTests(TestCase):
         self.assertContains(response, 'Payment: Paid')
         self.assertContains(response, 'Tracking: Pending')
         self.assertContains(response, '22 Delivery Lane')
+        self.assertContains(response, 'order-product-thumb')
+        self.assertContains(response, 'products/wallet.jpg')
         self.assertNotContains(response, str(self.other_order.public_id))
         self.assertNotContains(response, '1 Other Road')
         self.assertContains(
@@ -915,7 +962,7 @@ class ProductManagementTests(TestCase):
         self.assertContains(response, 'Seller Wallet')
         self.assertContains(response, reverse('edit_product', args=[self.owned_product.pk]))
         self.assertContains(response, reverse('delete_product', args=[self.owned_product.pk]))
-        self.assertNotContains(response, 'Other Seller Belt')
+        self.assertContains(response, 'Other Seller Belt')
         self.assertNotContains(response, 'Legacy Product')
 
     def test_seller_can_edit_owned_product_and_slug_tracks_title(self):
@@ -942,15 +989,39 @@ class ProductManagementTests(TestCase):
         self.assertEqual(self.owned_product.slug, 'updated-seller-wallet')
         self.assertEqual(self.owned_product.seller, self.seller)
 
-    def test_seller_cannot_edit_or_delete_another_sellers_or_legacy_product(self):
+    def test_seller_can_manage_other_sellers_products_but_not_unassigned_products(self):
         self.client.force_login(self.seller)
-        for product in (self.other_product, self.unassigned_product):
-            with self.subTest(product=product.title):
-                edit_response = self.client.get(reverse('edit_product', args=[product.pk]))
-                delete_response = self.client.post(reverse('delete_product', args=[product.pk]))
-                self.assertEqual(edit_response.status_code, 404)
-                self.assertEqual(delete_response.status_code, 404)
-                self.assertTrue(Product.objects.filter(pk=product.pk).exists())
+        edit_response = self.client.post(
+            reverse('edit_product', args=[self.other_product.pk]),
+            {
+                'category': self.category.pk,
+                'title': 'Updated Belt',
+                'description': 'Updated by another seller',
+                'price': '205.00',
+                'stock': 3,
+                'is_active': 'on',
+            },
+        )
+        self.assertRedirects(edit_response, reverse('seller_dashboard'))
+        self.other_product.refresh_from_db()
+        self.assertEqual(self.other_product.title, 'Updated Belt')
+        self.assertEqual(self.other_product.seller, self.other_seller)
+
+        delete_response = self.client.post(
+            reverse('delete_product', args=[self.other_product.pk])
+        )
+        self.assertRedirects(delete_response, reverse('seller_dashboard'))
+        self.assertFalse(Product.objects.filter(pk=self.other_product.pk).exists())
+
+        legacy_edit_response = self.client.get(
+            reverse('edit_product', args=[self.unassigned_product.pk])
+        )
+        legacy_delete_response = self.client.post(
+            reverse('delete_product', args=[self.unassigned_product.pk])
+        )
+        self.assertEqual(legacy_edit_response.status_code, 404)
+        self.assertEqual(legacy_delete_response.status_code, 404)
+        self.assertTrue(Product.objects.filter(pk=self.unassigned_product.pk).exists())
 
     def test_seller_delete_requires_post(self):
         self.client.force_login(self.seller)
@@ -973,13 +1044,304 @@ class ProductManagementTests(TestCase):
         self.assertRedirects(delete_response, reverse('admin_dashboard'))
         self.assertFalse(Product.objects.filter(pk=self.unassigned_product.pk).exists())
 
+    def test_admin_catalog_shows_small_product_images(self):
+        self.client.force_login(self.admin)
+
+        response = self.client.get(reverse('admin_dashboard'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'product-list-thumb')
+        self.assertContains(response, 'products/wallet.jpg')
+        self.assertContains(response, 'products/belt.jpg')
+
+    def test_admin_can_deactivate_seller_and_hide_products_without_losing_orders(self):
+        order = Order.objects.create(
+            full_name='Buyer',
+            email='buyer@example.com',
+            address='1 Main St',
+            city='Pune',
+            postal_code='411001',
+            total_amount=Decimal('100.00'),
+        )
+        item = OrderItem.objects.create(
+            order=order,
+            product=self.owned_product,
+            seller=self.seller,
+            product_title=self.owned_product.title,
+            price=self.owned_product.price,
+        )
+        self.client.force_login(self.admin)
+
+        response = self.client.post(
+            reverse('set_seller_active', args=[self.seller.pk]),
+            {'is_active': 'false'},
+        )
+
+        self.assertRedirects(response, reverse('admin_dashboard'))
+        self.seller.refresh_from_db()
+        self.owned_product.refresh_from_db()
+        item.refresh_from_db()
+        self.assertFalse(self.seller.is_active)
+        self.assertFalse(self.owned_product.is_active)
+        self.assertEqual(item.seller_id, self.seller.pk)
+        self.assertEqual(item.product_id, self.owned_product.pk)
+
+    def test_seller_dashboard_lists_manageable_products_from_other_sellers(self):
+        self.client.force_login(self.seller)
+
+        response = self.client.get(reverse('seller_dashboard'))
+
+        self.assertContains(response, 'Other Seller Belt')
+        self.assertContains(
+            response,
+            reverse('edit_product', args=[self.other_product.pk]),
+        )
+
+    def test_seller_can_add_optional_product_video_during_edit(self):
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                self.client.force_login(self.seller)
+                response = self.client.post(
+                    reverse('edit_product', args=[self.owned_product.pk]),
+                    {
+                        'category': self.category.pk,
+                        'title': self.owned_product.title,
+                        'description': self.owned_product.description,
+                        'price': '100.00',
+                        'stock': 2,
+                        'is_active': 'on',
+                        'video': SimpleUploadedFile(
+                            'product.mp4',
+                            b'test video data',
+                            content_type='video/mp4',
+                        ),
+                    },
+                )
+
+                self.assertRedirects(response, reverse('seller_dashboard'))
+                self.owned_product.refresh_from_db()
+                self.assertTrue(self.owned_product.video.name.endswith('.mp4'))
+
     def test_authenticated_navigation_links_to_buyer_profile(self):
         self.client.force_login(self.seller)
 
         response = self.client.get(reverse('seller_dashboard'))
 
+        self.assertContains(response, 'class="account-menu-toggle"')
+        self.assertContains(response, 'aria-label="Account: sellerone"')
+        self.assertContains(response, 'class="account-menu-username">sellerone</span>')
         self.assertContains(response, reverse('buyer_profile'))
-        self.assertContains(response, 'My Account')
+        self.assertContains(response, 'Logout (sellerone)')
+
+
+class SellerInvitationAndProfileTests(TestCase):
+    def setUp(self):
+        self.admin = User.objects.create_user(
+            username='inviteadmin',
+            password='safe-password',
+            role=User.Role.ADMIN,
+        )
+
+    def registration_data(self, username='newuser'):
+        return {
+            'username': username,
+            'email': f'{username}@example.com',
+            'phone_number': '5551234567',
+            'company_name': 'Example Company',
+            'password': 'strong-password-123',
+            'confirm_password': 'strong-password-123',
+        }
+
+    def test_public_registration_cannot_create_seller_by_posting_role(self):
+        response = self.client.post(
+            reverse('register'),
+            {**self.registration_data(), 'role': User.Role.SELLER},
+        )
+
+        self.assertRedirects(response, reverse('home'))
+        user = User.objects.get(username='newuser')
+        self.assertEqual(user.role, User.Role.BUYER)
+        self.assertNotContains(self.client.get(reverse('register')), 'name="role"')
+
+    def test_admin_generated_seller_invitation_is_single_use(self):
+        self.client.force_login(self.admin)
+        create_response = self.client.post(reverse('create_seller_invitation'), follow=True)
+
+        self.assertEqual(create_response.status_code, 200)
+        invite_link = create_response.context['seller_invite_link']
+        self.assertTrue(invite_link)
+        invite_path = '/' + invite_link.split('/', 3)[3]
+        registration = self.client.get(invite_path)
+        self.assertEqual(registration.status_code, 200)
+        self.assertContains(registration, 'Create Seller Account')
+
+        created = self.client.post(invite_path, self.registration_data('invitedseller'))
+
+        self.assertRedirects(created, reverse('home'))
+        seller = User.objects.get(username='invitedseller')
+        self.assertEqual(seller.role, User.Role.SELLER)
+        self.assertEqual(
+            SellerInvitation.objects.filter(used_at__isnull=False).count(),
+            1,
+        )
+        reused = self.client.get(invite_path)
+        self.assertRedirects(reused, reverse('register'))
+
+    def test_expired_invitation_cannot_create_seller(self):
+        import hashlib
+        from django.utils import timezone
+
+        token = 'expired-seller-token'
+        SellerInvitation.objects.create(
+            token_hash=hashlib.sha256(token.encode()).hexdigest(),
+            expires_at=timezone.now() - timedelta(days=1),
+        )
+
+        response = self.client.get(reverse('seller_register', args=[token]))
+
+        self.assertRedirects(response, reverse('register'))
+        self.assertFalse(User.objects.filter(username='expiredseller').exists())
+
+    def test_buyer_can_add_profile_photo_later(self):
+        user = User.objects.create_user(
+            username='photobuyer',
+            password='safe-password',
+        )
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                self.client.force_login(user)
+                response = self.client.post(
+                    reverse('buyer_profile'),
+                    {'profile_photo': make_test_image()},
+                )
+
+                self.assertRedirects(response, reverse('buyer_profile'))
+                user.refresh_from_db()
+                self.assertTrue(user.profile_photo.name.startswith('profiles/'))
+                self.assertTrue(user.profile_photo.storage.exists(user.profile_photo.name))
+
+
+class ProductReviewTests(TestCase):
+    def setUp(self):
+        self.category = Category.objects.create(name='Reviews', slug='reviews')
+        self.seller = User.objects.create_user(
+            username='review-seller',
+            password='safe-password',
+            role=User.Role.SELLER,
+        )
+        self.buyer = User.objects.create_user(
+            username='review-buyer',
+            password='safe-password',
+        )
+        self.other_buyer = User.objects.create_user(
+            username='other-buyer',
+            password='safe-password',
+        )
+        self.product = Product.objects.create(
+            category=self.category,
+            seller=self.seller,
+            title='Reviewed Wallet',
+            slug='reviewed-wallet',
+            price=Decimal('40.00'),
+            stock=4,
+            primary_image='products/review-wallet.jpg',
+        )
+
+    def test_signed_in_buyer_can_create_and_edit_one_review(self):
+        self.client.force_login(self.buyer)
+        review_url = reverse('save_product_review', args=[self.product.slug])
+
+        created = self.client.post(review_url, {'rating': '5', 'body': 'Excellent quality.'})
+        self.assertRedirects(created, reverse('product_detail', args=[self.product.slug]))
+        review = ProductReview.objects.get(product=self.product, user=self.buyer)
+        self.assertEqual(review.rating, 5)
+
+        updated = self.client.post(review_url, {'rating': '4', 'body': 'Still excellent.'})
+        self.assertRedirects(updated, reverse('product_detail', args=[self.product.slug]))
+        review.refresh_from_db()
+        self.assertEqual(review.rating, 4)
+        self.assertEqual(review.body, 'Still excellent.')
+        self.assertEqual(
+            ProductReview.objects.filter(product=self.product, user=self.buyer).count(),
+            1,
+        )
+
+    def test_review_uploads_photos_and_video_and_product_page_displays_them(self):
+        with TemporaryDirectory() as media_root:
+            with self.settings(MEDIA_ROOT=media_root):
+                self.client.force_login(self.buyer)
+                response = self.client.post(
+                    reverse('save_product_review', args=[self.product.slug]),
+                    {
+                        'rating': '5',
+                        'body': 'See my photos and video.',
+                        'images': [make_test_image('review.jpg')],
+                        'video': SimpleUploadedFile(
+                            'review.mp4',
+                            b'test review video',
+                            content_type='video/mp4',
+                        ),
+                    },
+                )
+                self.assertRedirects(response, reverse('product_detail', args=[self.product.slug]))
+                review = ProductReview.objects.get(product=self.product, user=self.buyer)
+                self.assertEqual(review.images.count(), 1)
+                self.assertTrue(review.video.name.endswith('.mp4'))
+
+                detail = self.client.get(reverse('product_detail', args=[self.product.slug]))
+                self.assertContains(detail, 'Customer reviews')
+                self.assertContains(detail, 'mediaViewer')
+                self.assertContains(detail, 'class="rating-choice-stars"')
+                self.assertContains(detail, 'name="rating" value="5"')
+                self.assertContains(detail, 'review.mp4')
+                self.assertContains(detail, 'review.jpg')
+
+    def test_review_images_can_be_removed_and_owner_can_delete_review(self):
+        review = ProductReview.objects.create(
+            product=self.product,
+            user=self.buyer,
+            rating=3,
+            body='Average',
+        )
+        photo = ProductReviewImage.objects.create(
+            review=review,
+            image='reviews/images/old.jpg',
+        )
+        self.client.force_login(self.buyer)
+
+        response = self.client.post(
+            reverse('save_product_review', args=[self.product.slug]),
+            {'rating': '4', 'body': 'Updated', 'remove_images': [str(photo.pk)]},
+        )
+
+        self.assertRedirects(response, reverse('product_detail', args=[self.product.slug]))
+        self.assertFalse(ProductReviewImage.objects.filter(pk=photo.pk).exists())
+        review.refresh_from_db()
+        self.assertEqual(review.rating, 4)
+
+        response = self.client.post(reverse('delete_product_review', args=[review.pk]))
+        self.assertRedirects(response, reverse('product_detail', args=[self.product.slug]))
+        self.assertFalse(ProductReview.objects.filter(pk=review.pk).exists())
+
+    def test_users_cannot_delete_other_reviews_and_sellers_cannot_review_own_products(self):
+        review = ProductReview.objects.create(
+            product=self.product,
+            user=self.buyer,
+            rating=5,
+            body='Great',
+        )
+        self.client.force_login(self.other_buyer)
+        response = self.client.post(reverse('delete_product_review', args=[review.pk]))
+        self.assertEqual(response.status_code, 404)
+        self.assertTrue(ProductReview.objects.filter(pk=review.pk).exists())
+
+        self.client.force_login(self.seller)
+        self.client.post(
+            reverse('save_product_review', args=[self.product.slug]),
+            {'rating': '5', 'body': 'Self review'},
+        )
+        self.assertEqual(ProductReview.objects.filter(product=self.product).count(), 1)
+
 
 
 class SellerInventoryAndOrderTests(TestCase):
@@ -1052,7 +1414,9 @@ class SellerInventoryAndOrderTests(TestCase):
         self.assertContains(response, 'Stock')
         self.assertContains(response, 'View and process orders')
         self.assertContains(response, 'Order ' + str(self.order.public_id))
-        self.assertNotContains(response, 'Wool Scarf')
+        self.assertContains(response, 'product-list-thumb')
+        self.assertContains(response, 'products/bag.jpg')
+        self.assertContains(response, 'Wool Scarf')
 
     def test_metrics_exclude_unpaid_orders(self):
         self.client.force_login(self.seller)
@@ -1065,6 +1429,10 @@ class SellerInventoryAndOrderTests(TestCase):
 
     def test_seller_can_progress_only_their_items_through_delivery(self):
         self.client.force_login(self.seller)
+        order_history = self.client.get(reverse('seller_orders'))
+        self.assertContains(order_history, 'order-product-thumb')
+        self.assertContains(order_history, 'products/bag.jpg')
+
         item = self.order.items.get(seller=self.seller)
         url = reverse(
             'update_seller_order_item_status',
@@ -1108,6 +1476,8 @@ class SellerInventoryAndOrderTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Canvas Bag')
+        self.assertContains(response, 'order-product-thumb')
+        self.assertContains(response, 'No image')
         self.assertNotContains(response, 'Wool Scarf')
         self.assertContains(response, reverse(
             'update_seller_order_item_status',

@@ -8,38 +8,20 @@
 
 {% block content %}
 <div class="auth-container auth-container-register">
-    <h2 class="auth-title auth-title-register">Join ZAN</h2>
-    <p class="auth-intro">Select Seller account to list items on ZAN portal.</p>
+    <h2 class="auth-title auth-title-register">
+        {% if seller_invitation %}Create Seller Account{% else %}Join ZAN{% endif %}
+    </h2>
+    <p class="auth-intro">
+        {% if seller_invitation %}
+            This invitation lets you create a seller account.
+        {% else %}
+            Create a buyer account to shop with ZAN.
+        {% endif %}
+    </p>
 
-    <form method="POST">
+    <form method="POST" enctype="multipart/form-data">
         {% csrf_token %}
-        <div class="form-group">
-            <label>Username</label>
-            <input type="text" name="username" required>
-        </div>
-        <div class="form-group">
-            <label>Email Address</label>
-            <input type="email" name="email" required>
-        </div>
-        <div class="form-group">
-            <label>Account Role</label>
-            <select name="role">
-                <option value="BUYER">Buyer / Private Client</option>
-                <option value="SELLER">Merchant / Seller</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Company / Brand Name (Sellers Only)</label>
-            <input type="text" name="company_name">
-        </div>
-        <div class="form-group">
-            <label>Password</label>
-            <input type="password" name="password" required>
-        </div>
-        <div class="form-group">
-            <label>Confirm Password</label>
-            <input type="password" name="confirm_password" required>
-        </div>
+        {{ form.as_p }}
         <button type="submit" class="btn-gold auth-submit">Create Account</button>
     </form>
 </div>

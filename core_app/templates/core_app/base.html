@@ -12,6 +12,7 @@
     <!-- Global UI Components CSS -->
     <link rel="stylesheet" href="{% static 'core_app/css/cart_drawer.css' %}">
     <link rel="stylesheet" href="{% static 'core_app/css/nav_search.css' %}">
+    <link rel="stylesheet" href="{% static 'core_app/css/notifications.css' %}">
     <link rel="stylesheet" href="{% static 'core_app/css/toasts.css' %}">
 
     {% block extra_css %}{% endblock %}
@@ -20,7 +21,14 @@
 
     <header class="site-header">
         <a href="{% url 'home' %}" class="brand-logo">ZAN</a>
-        <nav aria-label="Main navigation">
+        <button class="mobile-menu-toggle" type="button"
+                aria-controls="mainNavigation" aria-expanded="false"
+                aria-label="Open navigation menu" onclick="toggleMobileMenu()">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+        <nav id="mainNavigation" aria-label="Main navigation">
             <a href="{% url 'home' %}">Shop</a>
             <a href="{% url 'catalog' %}">Catalog</a>
             {% if user.is_authenticated %}
@@ -30,27 +38,75 @@
                 {% if user.role == 'ADMIN' %}
                     <a href="{% url 'admin_dashboard' %}" class="nav-link-admin">Admin Panel</a>
                 {% endif %}
-                <a href="{% url 'buyer_profile' %}">My Account</a>
-                <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
-            {% else %}
-                <a href="{% url 'login' %}">Login</a>
-                <a href="{% url 'register' %}">Register</a>
             {% endif %}
+        </nav>
 
+        <div class="nav-utilities">
             <form class="nav-search" role="search" action="{% url 'catalog' %}" method="get">
                 <label class="visually-hidden" for="navSearchQuery">Search products</label>
                 <input id="navSearchQuery" type="search" name="q" value="{{ request.GET.q }}"
                        placeholder="Search products..." autocomplete="off">
-                <button type="submit">Search</button>
+                <button type="button" class="mobile-search-toggle" aria-label="Open search"
+                        aria-expanded="false" onclick="toggleMobileSearch()">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"></circle><path d="m16 16 5 5"></path></svg>
+                </button>
+                <button type="submit" class="nav-search-submit">Search</button>
             </form>
 
-            <!-- Cart Drawer Trigger Button -->
             <button type="button" class="zan-nav-cart-btn nav-cart-button"
                     aria-controls="cartDrawer" aria-expanded="false"
-                    onclick="toggleCartDrawer(true)">
-                Cart <span class="cart-badge" id="navCartCount">{{ cart|length }}</span>
+                    aria-label="Open cart, {{ cart|length }} items" onclick="toggleCartDrawer(true)">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h2l2.2 11.2a2 2 0 0 0 2 1.6h8.9a2 2 0 0 0 1.9-1.5L22 8H6"></path><circle cx="10" cy="21" r="1"></circle><circle cx="18" cy="21" r="1"></circle></svg>
+                <span class="nav-cart-label">Cart</span>
+                <span class="cart-badge" id="navCartCount">{{ cart|length }}</span>
             </button>
-        </nav>
+
+            <div class="notification-menu" data-user-key="{% if user.is_authenticated %}user-{{ user.pk }}{% else %}guest{% endif %}">
+                <button type="button" class="notification-menu-toggle" aria-haspopup="true"
+                        aria-controls="notificationPanel" aria-expanded="false"
+                        aria-label="Notifications" title="Notifications">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9"></path>
+                        <path d="M10 21h4"></path>
+                    </svg>
+                    <span class="notification-unread-dot" aria-hidden="true" hidden></span>
+                </button>
+                <section class="notification-panel" id="notificationPanel" aria-label="Notifications" hidden>
+                    <header class="notification-panel-header">
+                        <h2>Notifications</h2>
+                        <span class="notification-unread-count" aria-live="polite"></span>
+                    </header>
+                    <ul class="notification-list" aria-live="polite"></ul>
+                </section>
+            </div>
+
+            <div class="account-menu">
+                <button type="button" class="account-menu-toggle" aria-haspopup="true"
+                        aria-controls="accountMenu" aria-expanded="false"
+                        aria-label="{% if user.is_authenticated %}Account: {{ user.username }}{% else %}Account menu{% endif %}"
+                        onclick="toggleAccountMenu()">
+                    {% if user.is_authenticated %}
+                    {% if user.profile_photo %}
+                    <img class="account-avatar" src="{{ user.profile_photo.url }}" alt="">
+                    {% else %}
+                    <span aria-hidden="true">{{ user.username|first|upper }}</span>
+                    {% endif %}
+                    {% else %}
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"></circle><path d="M4 21a8 8 0 0 1 16 0"></path></svg>
+                    {% endif %}
+                </button>
+                <div class="account-menu-panel" id="accountMenu" hidden>
+                    {% if user.is_authenticated %}
+                    <span class="account-menu-username">{{ user.username }}</span>
+                    <a href="{% url 'buyer_profile' %}">My Account</a>
+                    <a href="{% url 'logout' %}">Logout ({{ user.username }})</a>
+                    {% else %}
+                    <a href="{% url 'login' %}">Login</a>
+                    <a href="{% url 'register' %}">Register</a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
     </header>
 
     <main>
@@ -101,6 +157,7 @@
 
     <!-- External Main JS -->
     <script src="{% static 'core_app/js/main.js' %}"></script>
+    <script src="{% static 'core_app/js/notifications.js' %}"></script>
 
     <!-- Global Cart Script Handlers -->
     <script>
@@ -120,6 +177,43 @@
         backdrop.classList.toggle('active', open);
         const cartButton = document.querySelector('.nav-cart-button');
         if (cartButton) cartButton.setAttribute('aria-expanded', String(open));
+      }
+
+      function toggleMobileMenu(forceOpen) {
+        const navigation = document.getElementById('mainNavigation');
+        const menuButton = document.querySelector('.mobile-menu-toggle');
+        if (!navigation || !menuButton) return;
+
+        const open = typeof forceOpen === 'boolean'
+          ? forceOpen
+          : !navigation.classList.contains('is-open');
+        navigation.classList.toggle('is-open', open);
+        menuButton.setAttribute('aria-expanded', String(open));
+        menuButton.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
+      }
+
+      function toggleMobileSearch(forceOpen) {
+        const search = document.querySelector('.nav-search');
+        const searchButton = document.querySelector('.mobile-search-toggle');
+        if (!search || !searchButton) return;
+
+        const open = typeof forceOpen === 'boolean'
+          ? forceOpen
+          : !search.classList.contains('is-search-open');
+        search.classList.toggle('is-search-open', open);
+        searchButton.setAttribute('aria-expanded', String(open));
+        searchButton.setAttribute('aria-label', open ? 'Close search' : 'Open search');
+        if (open) search.querySelector('input')?.focus();
+      }
+
+      function toggleAccountMenu(forceOpen) {
+        const panel = document.getElementById('accountMenu');
+        const button = document.querySelector('.account-menu-toggle');
+        if (!panel || !button) return;
+
+        const open = typeof forceOpen === 'boolean' ? forceOpen : panel.hidden;
+        panel.hidden = !open;
+        button.setAttribute('aria-expanded', String(open));
       }
 
       function showToast(message, type = 'success') {
@@ -151,11 +245,26 @@
 
       document.addEventListener('click', event => {
         const dismiss = event.target.closest('.toast-dismiss');
-        if (dismiss) dismiss.closest('.toast-message').remove();
+        if (dismiss) dismiss.closest('.toast-message')?.remove();
+
+        if (event.target.closest('#mainNavigation a, .nav-cart-button')) {
+          toggleMobileMenu(false);
+        }
+        if (!event.target.closest('.account-menu')) toggleAccountMenu(false);
+        if (event.target.closest('.account-menu-panel a')) toggleAccountMenu(false);
+      });
+
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') {
+          toggleMobileMenu(false);
+          toggleAccountMenu(false);
+          toggleMobileSearch(false);
+        }
       });
 
       function syncCartUI(data) {
         const navBadge = document.getElementById('navCartCount');
+        const navCartButton = document.querySelector('.nav-cart-button');
         const drawerBadge = document.getElementById('cartDrawerCount');
         const drawerSubtotal = document.getElementById('cartDrawerSubtotal');
         const drawerItems = document.getElementById('cartDrawerItems');
@@ -163,6 +272,9 @@
         const cartPageSubtotal = document.getElementById('cartPageSubtotal');
 
         if (navBadge) navBadge.textContent = data.cart_count;
+        if (navCartButton) {
+          navCartButton.setAttribute('aria-label', `Open cart, ${data.cart_count} items`);
+        }
         if (drawerBadge) drawerBadge.textContent = data.cart_count;
         if (drawerSubtotal) drawerSubtotal.textContent = data.total_price;
         if (cartPageSubtotal) cartPageSubtotal.textContent = data.total_price;

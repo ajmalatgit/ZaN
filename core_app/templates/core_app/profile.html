@@ -11,6 +11,22 @@
   <h1>My Account</h1>
   <p class="profile-welcome">Welcome, {{ request.user.get_full_name|default:request.user.username }}.</p>
 
+  <section class="profile-section profile-photo-section">
+    <h2>Profile photo</h2>
+    {% if request.user.profile_photo %}
+      <img class="profile-avatar-preview" src="{{ request.user.profile_photo.url }}" alt="Your profile photo">
+    {% else %}
+      <p class="profile-empty">You have not added a profile photo yet.</p>
+    {% endif %}
+    <form method="post" enctype="multipart/form-data" class="profile-photo-form">
+      {% csrf_token %}
+      {{ profile_form.profile_photo.label_tag }}
+      {{ profile_form.profile_photo }}
+      {{ profile_form.profile_photo.errors }}
+      <button type="submit" class="btn-gold">Save photo</button>
+    </form>
+  </section>
+
   <section class="profile-section">
     <h2>Order history</h2>
     {% for order in orders %}
@@ -27,7 +43,19 @@
         </header>
         <ul class="profile-order-items">
           {% for item in order.items.all %}
-            <li>{{ item.product_title }} × {{ item.quantity }} — ₹{{ item.line_total|floatformat:2 }}</li>
+            <li class="profile-order-item">
+              <span class="order-product-thumb">
+                {% if item.product and item.product.primary_image %}
+                  <img src="{{ item.product.primary_image.url }}" alt="{{ item.product_title }}" loading="lazy">
+                {% else %}
+                  <span aria-hidden="true">No image</span>
+                {% endif %}
+              </span>
+              <span class="profile-order-item-details">
+                <strong>{{ item.product_title }}</strong>
+                <span>{{ item.quantity }} × ₹{{ item.price|floatformat:2 }} — ₹{{ item.line_total|floatformat:2 }}</span>
+              </span>
+            </li>
           {% endfor %}
         </ul>
         <div class="profile-order-footer">

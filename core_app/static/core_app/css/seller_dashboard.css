@@ -88,6 +88,15 @@
     gap: 0.3rem;
 }
 
+.seller-order-item-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.seller-order-item-info strong {
+    overflow-wrap: anywhere;
+}
+
 .seller-order-card {
     margin: 1.25rem 0;
 }
@@ -163,6 +172,7 @@
 
 .seller-products-table {
     width: 100%;
+    min-width: 800px;
     border-collapse: collapse;
     background: var(--surface-card);
     border: 1px solid var(--border-color);
@@ -253,10 +263,21 @@
     }
 
     .seller-order-summary,
-    .seller-order-item,
     .seller-order-header {
         align-items: flex-start;
         flex-direction: column;
+    }
+
+    .seller-order-item {
+        display: grid;
+        grid-template-columns: 56px minmax(0, 1fr);
+        align-items: center;
+    }
+
+    .seller-order-item > form,
+    .seller-order-item > .seller-awaiting-payment {
+        grid-column: 1 / -1;
+        width: 100%;
     }
 
     .seller-order-total {
