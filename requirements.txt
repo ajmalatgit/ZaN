@@ -11,3 +11,6 @@ setuptools==80.9.0
 reportlab==4.4.9
 dj-database-url==2.3.0
 django-storages[s3]==1.14.6
+cloudinary==1.46.2
+django-cloudinary-storage==0.3.0
+whitenoise==6.12.0

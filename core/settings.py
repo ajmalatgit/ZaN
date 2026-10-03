@@ -56,6 +56,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -148,11 +149,46 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Tells Django to look in your app's or project's static folder
 STATICFILES_DIRS = [
     BASE_DIR / 'core_app' / 'static',
 ]
+
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedManifestStaticFilesStorage',
+    },
+}
+
+cloudinary_values = {
+    'cloud_name': config('CLOUDINARY_CLOUD_NAME', default=''),
+    'api_key': config('CLOUDINARY_API_KEY', default=''),
+    'api_secret': config('CLOUDINARY_API_SECRET', default=''),
+}
+cloudinary_configured = all(cloudinary_values.values())
+if any(cloudinary_values.values()) and not cloudinary_configured:
+    raise ImproperlyConfigured(
+        'Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET together.'
+    )
+if not DEBUG and not cloudinary_configured:
+    raise ImproperlyConfigured(
+        'Configure Cloudinary media storage for production; local media is not persistent.'
+    )
+if cloudinary_configured:
+    INSTALLED_APPS.extend(['cloudinary_storage', 'cloudinary'])
+    CLOUDINARY_STORAGE = {
+        'CLOUD_NAME': cloudinary_values['cloud_name'],
+        'API_KEY': cloudinary_values['api_key'],
+        'API_SECRET': cloudinary_values['api_secret'],
+    }
+    STORAGES['default'] = {
+        'BACKEND': 'cloudinary_storage.storage.MediaCloudinaryStorage',
+    }
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -190,9 +226,14 @@ SECURE_SSL_REDIRECT = not DEBUG or config(
     default=False,
     cast=bool,
 )
+TRUST_PROXY_SSL_HEADER = config(
+    'TRUST_PROXY_SSL_HEADER',
+    default=False,
+    cast=bool,
+)
 SECURE_PROXY_SSL_HEADER = (
     ('HTTP_X_FORWARDED_PROTO', 'https')
-    if config('TRUST_PROXY_SSL_HEADER', default=False, cast=bool)
+    if TRUST_PROXY_SSL_HEADER
     else None
 )
 SECURE_HSTS_SECONDS = config(

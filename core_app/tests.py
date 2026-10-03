@@ -1316,7 +1316,10 @@ class ProductReviewTests(TestCase):
                 self.assertContains(detail, 'name="rating" value="5"')
                 self.assertContains(detail, 'Share your experience, or leave this blank to rate only.')
                 self.assertContains(detail, 'data-review-suggestion=')
-                self.assertContains(detail, 'product_reviews.js')
+                self.assertRegex(
+                    detail.content.decode(),
+                    r'product_reviews(?:\.[0-9a-f]+)?\.js',
+                )
                 self.assertContains(detail, 'review.mp4')
                 self.assertContains(detail, 'review.jpg')
 
