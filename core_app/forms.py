@@ -140,7 +140,7 @@ class MultipleImageField(forms.ImageField):
 
 class ProductReviewForm(forms.ModelForm):
     rating = forms.TypedChoiceField(
-        choices=[(value, f'{value} star{"s" if value != 1 else ""}') for value in range(5, 0, -1)],
+        choices=[(value, f'{value} star{"s" if value != 1 else ""}') for value in range(1, 6)],
         coerce=int,
         widget=forms.RadioSelect,
     )
@@ -159,13 +159,17 @@ class ProductReviewForm(forms.ModelForm):
         model = ProductReview
         fields = ['rating', 'body', 'video']
         widgets = {
-            'rating': forms.RadioSelect,
-            'body': forms.Textarea(attrs={'class': 'form-input', 'rows': 4}),
+            'body': forms.Textarea(attrs={'class': 'form-input', 'rows': 4, 'maxlength': 3000}),
             'video': forms.ClearableFileInput(attrs={
                 'class': 'form-input',
                 'accept': 'video/mp4,video/webm,video/quicktime',
             }),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['body'].required = False
+        self.fields['video'].required = False
 
     def clean_images(self):
         images = self.cleaned_data['images']

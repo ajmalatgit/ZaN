@@ -1085,6 +1085,9 @@ class ProductManagementTests(TestCase):
         self.assertFalse(self.owned_product.is_active)
         self.assertEqual(item.seller_id, self.seller.pk)
         self.assertEqual(item.product_id, self.owned_product.pk)
+        self.client.force_login(self.seller)
+        blocked = self.client.get(reverse('seller_dashboard'))
+        self.assertRedirects(blocked, reverse('login'))
 
     def test_seller_dashboard_lists_manageable_products_from_other_sellers(self):
         self.client.force_login(self.seller)
@@ -1246,6 +1249,24 @@ class ProductReviewTests(TestCase):
             stock=4,
             primary_image='products/review-wallet.jpg',
         )
+        order = Order.objects.create(
+            user=self.buyer,
+            full_name='Review Buyer',
+            email='review-buyer@example.com',
+            address='1 Test Lane',
+            city='Pune',
+            postal_code='411001',
+            total_amount=Decimal('40.00'),
+            payment_status=Order.PaymentStatus.PAID,
+        )
+        OrderItem.objects.create(
+            order=order,
+            product=self.product,
+            seller=self.seller,
+            product_title=self.product.title,
+            price=self.product.price,
+            fulfillment_status=OrderItem.FulfillmentStatus.COMPLETED,
+        )
 
     def test_signed_in_buyer_can_create_and_edit_one_review(self):
         self.client.force_login(self.buyer)
@@ -1291,8 +1312,11 @@ class ProductReviewTests(TestCase):
                 detail = self.client.get(reverse('product_detail', args=[self.product.slug]))
                 self.assertContains(detail, 'Customer reviews')
                 self.assertContains(detail, 'mediaViewer')
-                self.assertContains(detail, 'class="rating-choice-stars"')
+                self.assertContains(detail, 'class="star-choice"')
                 self.assertContains(detail, 'name="rating" value="5"')
+                self.assertContains(detail, 'Share your experience, or leave this blank to rate only.')
+                self.assertContains(detail, 'data-review-suggestion=')
+                self.assertContains(detail, 'product_reviews.js')
                 self.assertContains(detail, 'review.mp4')
                 self.assertContains(detail, 'review.jpg')
 
@@ -1341,6 +1365,40 @@ class ProductReviewTests(TestCase):
             {'rating': '5', 'body': 'Self review'},
         )
         self.assertEqual(ProductReview.objects.filter(product=self.product).count(), 1)
+
+    def test_review_is_blocked_until_delivered_but_admin_can_review_for_testing(self):
+        OrderItem.objects.filter(
+            order__user=self.buyer,
+            product=self.product,
+        ).update(fulfillment_status=OrderItem.FulfillmentStatus.SHIPPED)
+        self.client.force_login(self.other_buyer)
+        response = self.client.post(
+            reverse('save_product_review', args=[self.product.slug]),
+            {'rating': '5', 'body': ''},
+        )
+        self.assertRedirects(response, reverse('product_detail', args=[self.product.slug]))
+        self.assertFalse(
+            ProductReview.objects.filter(product=self.product, user=self.other_buyer).exists()
+        )
+        self.assertContains(
+            self.client.get(reverse('product_detail', args=[self.product.slug])),
+            'Reviews are available after your order has been delivered.',
+        )
+
+        admin = User.objects.create_user(
+            username='review-admin',
+            password='safe-password',
+            role=User.Role.ADMIN,
+        )
+        self.client.force_login(admin)
+        response = self.client.post(
+            reverse('save_product_review', args=[self.product.slug]),
+            {'rating': '4', 'body': ''},
+        )
+        self.assertRedirects(response, reverse('product_detail', args=[self.product.slug]))
+        self.assertTrue(
+            ProductReview.objects.filter(product=self.product, user=admin, body='').exists()
+        )
 
 
 

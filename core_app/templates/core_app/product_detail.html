@@ -95,7 +95,7 @@
     </p>
   </div>
 
-  {% if user.is_authenticated and product.seller_id != user.id %}
+  {% if can_write_review %}
   <form class="review-form" method="post" enctype="multipart/form-data"
         action="{% url 'save_product_review' product.slug %}">
     {% csrf_token %}
@@ -103,21 +103,24 @@
     <fieldset class="review-rating-field">
       <legend>Rating</legend>
       {% for value, label in review_form.fields.rating.choices %}
-      <label>
+      <label class="star-choice" data-rating="{{ value }}">
         <input type="radio" name="rating" value="{{ value }}"
-               {% if user_review and user_review.rating == value|add:0 %}checked{% elif not user_review and forloop.first %}checked{% endif %}
+               {% if user_review and user_review.rating == value|add:0 %}checked{% endif %}
                required>
-        <span class="rating-choice-stars" aria-hidden="true">
-          {% for star in "12345" %}
-            {% if forloop.counter <= value|add:0 %}★{% else %}☆{% endif %}
-          {% endfor %}
-        </span>
+        <span class="rating-choice-star" aria-hidden="true">☆</span>
         <span class="visually-hidden">{{ value }} out of 5 stars</span>
       </label>
       {% endfor %}
     </fieldset>
-    <label for="reviewBody">Your review</label>
-    <textarea id="reviewBody" name="body" rows="4" maxlength="3000" required>{% if user_review %}{{ user_review.body }}{% endif %}</textarea>
+    <label for="reviewBody">Your review (optional)</label>
+    <div class="review-suggestions" aria-label="Optional review suggestions">
+      <span>Suggestions:</span>
+      <button type="button" data-review-suggestion="Great quality and exactly as described.">Great quality</button>
+      <button type="button" data-review-suggestion="The product looks beautiful and feels well made.">Beautiful and well made</button>
+      <button type="button" data-review-suggestion="Good value and arrived in excellent condition.">Good value</button>
+    </div>
+    <textarea id="reviewBody" name="body" rows="4" maxlength="3000"
+              placeholder="Share your experience, or leave this blank to rate only.">{% if user_review %}{{ user_review.body }}{% endif %}</textarea>
 
     {% if user_review %}
       {% if user_review.images.all %}
@@ -143,7 +146,7 @@
       {% endif %}
     {% endif %}
 
-    <label for="reviewImages">Add photos (up to 5 total, 10 MB each)</label>
+    <label for="reviewImages">Add optional photos (up to 5 total, 10 MB each)</label>
     <input id="reviewImages" type="file" name="images" accept="image/*" multiple>
     <label for="reviewVideo">Add an optional video (MP4, WebM, or MOV; up to 50 MB)</label>
     <input id="reviewVideo" type="file" name="video" accept="video/mp4,video/webm,video/quicktime">
@@ -151,6 +154,8 @@
   </form>
   {% elif not user.is_authenticated %}
   <p class="review-sign-in"><a href="{% url 'login' %}?next={{ request.path }}">Sign in</a> to write a review.</p>
+  {% elif not can_review %}
+  <p class="review-sign-in">Reviews are available after your order has been delivered.</p>
   {% endif %}
 
   <div class="review-list">
@@ -242,4 +247,5 @@
   }
 </script>
 <script src="{% static 'core_app/js/product_gallery.js' %}"></script>
+<script src="{% static 'core_app/js/product_reviews.js' %}"></script>
 {% endblock %}

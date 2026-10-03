@@ -89,7 +89,7 @@ class ProductReview(models.Model):
     rating = models.PositiveSmallIntegerField(
         validators=[MinValueValidator(1), MaxValueValidator(5)],
     )
-    body = models.TextField(max_length=3000)
+    body = models.TextField(max_length=3000, blank=True)
     video = models.FileField(
         upload_to='reviews/videos/%Y/%m/',
         blank=True,

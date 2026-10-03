@@ -7,6 +7,9 @@ def seller_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
+        if not request.user.is_active:
+            messages.error(request, "This account is inactive. Contact an administrator for help.")
+            return redirect('login')
         if request.user.role in [request.user.Role.SELLER, request.user.Role.ADMIN]:
             return view_func(request, *args, **kwargs)
         messages.error(request, "Access restricted to Seller accounts.")

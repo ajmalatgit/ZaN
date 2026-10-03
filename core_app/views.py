@@ -589,6 +589,18 @@ def product_detail(request, slug):
         if request.user.is_authenticated
         else None
     )
+    has_delivered_product = (
+        request.user.is_authenticated
+        and OrderItem.objects.filter(
+            product=product,
+            order__user=request.user,
+            fulfillment_status=OrderItem.FulfillmentStatus.COMPLETED,
+        ).exists()
+    )
+    is_admin = (
+        request.user.is_authenticated
+        and (request.user.role == User.Role.ADMIN or request.user.is_superuser)
+    )
     context = {
         'product': product,
         'related_products': related_products,
@@ -599,6 +611,12 @@ def product_detail(request, slug):
             review_count=Count('pk'),
         ),
         'user_review': user_review,
+        'can_review': is_admin or has_delivered_product or user_review is not None,
+        'can_write_review': (
+            request.user.is_authenticated
+            and (product.seller_id != request.user.pk or is_admin)
+            and (is_admin or has_delivered_product or user_review is not None)
+        ),
     }
     return render(request, 'core_app/product_detail.html', context)
 
@@ -607,13 +625,23 @@ def product_detail(request, slug):
 @require_POST
 def save_product_review(request, slug):
     product = get_object_or_404(Product, slug=slug, is_active=True)
-    if product.seller_id == request.user.pk:
+    is_admin = request.user.role == User.Role.ADMIN or request.user.is_superuser
+    if product.seller_id == request.user.pk and not is_admin:
         messages.error(request, 'You cannot review your own product.')
         return redirect('product_detail', slug=slug)
 
     with transaction.atomic():
         Product.objects.select_for_update().get(pk=product.pk)
         review = ProductReview.objects.filter(product=product, user=request.user).first()
+        has_delivered_product = OrderItem.objects.filter(
+            product=product,
+            order__user=request.user,
+            fulfillment_status=OrderItem.FulfillmentStatus.COMPLETED,
+        ).exists()
+        if not (is_admin or has_delivered_product or review):
+            messages.error(request, 'You can review this product after your order is delivered.')
+            return redirect('product_detail', slug=slug)
+
         form = ProductReviewForm(
             request.POST,
             request.FILES,
