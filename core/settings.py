@@ -28,18 +28,30 @@ if len(SECRET_KEY) < 50 or SECRET_KEY.startswith('django-insecure-'):
     raise ImproperlyConfigured('Set a unique, randomly generated SECRET_KEY in .env.')
 
 DEBUG = config('DEBUG', default=False, cast=bool)
+import os
+
+# Parse comma-separated strings into lists
 ALLOWED_HOSTS = config(
     'ALLOWED_HOSTS',
     default='localhost,127.0.0.1' if DEBUG else '',
     cast=lambda value: [host.strip() for host in value.split(',') if host.strip()],
 )
-if not DEBUG and not ALLOWED_HOSTS:
-    raise ImproperlyConfigured('Set ALLOWED_HOSTS to the production hostnames.')
+
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
     default='',
     cast=lambda value: [origin.strip() for origin in value.split(',') if origin.strip()],
 )
+
+# Automatically attach Render's dynamic host when running on Render
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f"https://{RENDER_EXTERNAL_HOSTNAME}")
+
+# Fallback for production if no explicit host was supplied in env
+if not DEBUG and not ALLOWED_HOSTS:
+    ALLOWED_HOSTS = ['.onrender.com', 'localhost', '127.0.0.1']
 
 
 # Application definition
